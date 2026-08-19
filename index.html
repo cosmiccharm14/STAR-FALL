@@ -1,146 +1,277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
 <title>STAR//FALL 1997</title>
 
+
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+@import url(
+    'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'
+);
+
 
 *{
     box-sizing:border-box;
 }
 
-html,body{
+
+html,
+body{
+
     margin:0;
+
     width:100%;
     height:100%;
+
     overflow:hidden;
+
     background:#08050e;
-    font-family:"Press Start 2P",monospace;
+
+    font-family:
+        "Press Start 2P",
+        monospace;
+
 }
+
 
 body{
+
     display:flex;
+
     justify-content:center;
+
     align-items:center;
+
 }
+
 
 .arcade{
+
     position:relative;
-    width:min(94vw,1400px,calc(88vh * 4 / 3));
+
+    width:
+        min(
+            94vw,
+            1400px,
+            calc(88vh * 4 / 3)
+        );
+
     aspect-ratio:4/3;
+
     background:#090611;
+
     border:10px solid #2b2340;
+
     box-shadow:
+
         0 0 0 5px #050309,
+
         0 0 45px #8b32ff55,
+
         inset 0 0 35px #000;
+
     overflow:hidden;
+
 }
+
 
 canvas{
+
     width:100%;
     height:100%;
+
     display:block;
+
     image-rendering:pixelated;
     image-rendering:crisp-edges;
+
 }
+
 
 .arcade:after{
+
     content:"";
+
     position:absolute;
+
     inset:0;
+
     pointer-events:none;
+
     z-index:5;
+
     background:
+
         repeating-linear-gradient(
+
             to bottom,
-            rgba(255,255,255,.025) 0 1px,
-            transparent 1px 4px
+
+            rgba(255,255,255,.025)
+            0 1px,
+
+            transparent
+            1px 4px
+
         );
+
 }
 
+
 .mobile-controls{
+
     display:none;
+
     position:fixed;
+
     left:12px;
     right:12px;
+
     bottom:14px;
+
     justify-content:space-between;
+
     z-index:20;
+
 }
+
 
 .dpad,
 .action-buttons{
+
     display:flex;
+
     gap:6px;
+
 }
 
+
 .mobile-controls button{
+
     width:52px;
     height:52px;
+
     border:3px solid #8f6bca;
+
     background:#1a1127;
+
     color:white;
+
     font-family:inherit;
+
     font-size:12px;
+
 }
+
 
 @media(max-width:700px){
 
     .mobile-controls{
+
         display:flex;
+
     }
 
+
     .arcade{
+
         width:94vw;
+
         border-width:6px;
+
     }
+
 }
+
 </style>
+
 </head>
+
 
 <body>
 
+
 <div class="arcade">
+
     <canvas id="game"></canvas>
+
 </div>
+
 
 <div class="mobile-controls">
 
     <div class="dpad">
+
         <button data-key="ArrowLeft">◀</button>
+
         <button data-key="ArrowUp">▲</button>
         <button data-key="ArrowDown">▼</button>
         <button data-key="ArrowRight">▶</button>
+
     </div>
 
+
     <div class="action-buttons">
+
         <button data-key="Space">●</button>
+
     </div>
 
 </div>
+
+
 
 <script>
 
 "use strict";
 
+
 /* =========================================================
    STAR//FALL 1997
+   =========================================================
+
+   PHASE 2.1
+   ---------------------------------------------------------
+   WEAPON POWER-UPS
+
+   NORMAL
+   SPREAD
+   RAPID
+   LASER
+   MISSILE
+
    ========================================================= */
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+
+/* =========================================================
+   CANVAS
+   ========================================================= */
+
+const canvas =
+    document.getElementById("game");
+
+const ctx =
+    canvas.getContext("2d");
+
 
 const W = 640;
 const H = 480;
 
+
 canvas.width = W;
 canvas.height = H;
 
+
 ctx.imageSmoothingEnabled = false;
+
 
 
 /* =========================================================
@@ -148,63 +279,137 @@ ctx.imageSmoothingEnabled = false;
    ========================================================= */
 
 let state = "title";
+
 let paused = false;
 
 let score = 0;
 
+
 let highScore =
     Number(
-        localStorage.getItem("starFallHighScore") || 0
+        localStorage.getItem(
+            "starFallHighScore"
+        ) || 0
     );
 
+
 let lives = 3;
+
 const MAX_LIVES = 5;
 
 let level = 1;
+
 let frame = 0;
 
 let enemyTimer = 10;
+
 let heartTimer = 650;
 
+let powerUpTimer = 500;
+
 let shake = 0;
+
 
 const keys = {};
 
 
+
+/* =========================================================
+   ATTRACT MODE
+   ========================================================= */
+
+const ATTRACT_DELAY =
+    60 * 20;
+
+
+const ATTRACT_DURATION =
+    60 * 32;
+
+
+let attractTimer = 0;
+
+let attractFrame = 0;
+
+
+let demoScore = 0;
+
+let demoLives = 3;
+
+let demoLevel = 1;
+
+
+let demoTargetX =
+    W / 2;
+
+
+let demoTargetY =
+    H - 100;
+
+
+
+/* =========================================================
+   PLAYER
+   ========================================================= */
+
 const player = {
 
     x: W / 2,
+
     y: H - 75,
 
     w: 38,
+
     h: 42,
 
     speed: 4,
 
     cooldown: 0,
-    invincible: 0
+
+    invincible: 0,
+
+    weapon: "normal",
+
+    weaponTimer: 0
 
 };
 
 
+
+/* =========================================================
+   OBJECT ARRAYS
+   ========================================================= */
+
 let bullets = [];
+
 let enemies = [];
+
 let hearts = [];
+
+let powerUps = [];
+
 let particles = [];
+
 let stars = [];
+
 
 
 /* =========================================================
    STARFIELD
    ========================================================= */
 
-for(let i = 0; i < 190; i++){
+for(
+    let i = 0;
+    i < 190;
+    i++
+){
 
     stars.push({
 
-        x: Math.random() * W,
+        x:
+            Math.random() * W,
 
-        y: Math.random() * H,
+        y:
+            Math.random() * H,
 
         speed:
             .35 +
@@ -220,27 +425,10 @@ for(let i = 0; i < 190; i++){
 }
 
 
+
 /* =========================================================
    TITLE LOGO
    ========================================================= */
-
-/*
-    Custom geometric pixel logo.
-
-    Each letter is represented by a 5x7 grid.
-
-    This means the STAR/FALL logo does NOT depend
-    on the Google font.
-
-    The reference-style effect comes from:
-      - white main blocks
-      - dark grey offset
-      - cyan ghost
-      - red ghost
-      - yellow micro-offset
-      - falling letters
-*/
-
 
 const LOGO_FONT = {
 
@@ -307,10 +495,6 @@ const LOGO_FONT = {
 };
 
 
-/*
-    Individual letters have their own falling physics.
-*/
-
 const logoLetters = [];
 
 
@@ -318,66 +502,98 @@ function setupLogo(){
 
     logoLetters.length = 0;
 
+
     const words = [
+
         {
             text:"STAR",
             y:92,
             scale:7,
             delay:0
         },
+
         {
             text:"FALL",
             y:190,
             scale:7,
             delay:24
         }
+
     ];
 
 
-    for(const word of words){
+    for(
+        const word of words
+    ){
 
-        const spacing = 11 * word.scale;
+        const spacing =
+            11 * word.scale;
+
 
         const totalWidth =
-            word.text.length * 5 * word.scale +
-            (word.text.length - 1) * spacing;
+
+            word.text.length *
+            5 *
+            word.scale
+
+            +
+
+            (
+                word.text.length - 1
+            ) *
+            spacing;
+
 
         const startX =
-            (W - totalWidth) / 2;
+            (
+                W -
+                totalWidth
+            ) / 2;
 
 
-        for(let i = 0; i < word.text.length; i++){
+        for(
+            let i = 0;
+            i < word.text.length;
+            i++
+        ){
 
             logoLetters.push({
 
-                char:word.text[i],
+                char:
+                    word.text[i],
 
                 x:
                     startX +
-                    i * (
-                        5 * word.scale +
+                    i *
+                    (
+                        5 *
+                        word.scale +
                         spacing
                     ),
 
-                targetY:word.y,
+                targetY:
+                    word.y,
 
                 y:
                     -180 -
                     Math.random() * 160,
 
-                scale:word.scale,
+                scale:
+                    word.scale,
 
                 delay:
                     word.delay +
                     i * 7,
 
-                velocity:
-                    0,
+                velocity:0,
 
                 landed:false,
 
                 rotation:
-                    (Math.random() - .5) * .04
+                    (
+                        Math.random() -
+                        .5
+                    ) * .04
 
             });
 
@@ -391,16 +607,26 @@ function setupLogo(){
 setupLogo();
 
 
+
 function updateLogo(){
 
-    for(const letter of logoLetters){
+    for(
+        const letter of logoLetters
+    ){
 
-        if(frame < letter.delay){
+        if(
+            frame <
+            letter.delay
+        ){
+
             continue;
+
         }
 
 
-        if(!letter.landed){
+        if(
+            !letter.landed
+        ){
 
             letter.velocity += .42;
 
@@ -441,6 +667,7 @@ function updateLogo(){
 }
 
 
+
 function drawPixelGlyph(
     char,
     x,
@@ -454,29 +681,43 @@ function drawPixelGlyph(
     const pattern =
         LOGO_FONT[char];
 
+
     if(!pattern) return;
 
 
-    for(let row = 0; row < 7; row++){
+    for(
+        let row = 0;
+        row < 7;
+        row++
+    ){
 
-        for(let col = 0; col < 5; col++){
+        for(
+            let col = 0;
+            col < 5;
+            col++
+        ){
 
             if(
                 pattern[row][col] === "1"
             ){
 
                 px(
+
                     x +
                     offsetX +
-                    col * scale,
+                    col *
+                    scale,
 
                     y +
                     offsetY +
-                    row * scale,
+                    row *
+                    scale,
 
                     scale,
                     scale,
+
                     color
+
                 );
 
             }
@@ -488,13 +729,6 @@ function drawPixelGlyph(
 }
 
 
-/*
-    Draws the same letter several times with tiny
-    chromatic offsets.
-
-    This is what gives it that old CRT / arcade
-    print-registration look.
-*/
 
 function drawLogoLetter(letter){
 
@@ -507,10 +741,6 @@ function drawLogoLetter(letter){
     const s =
         letter.scale;
 
-
-    /*
-        DARK OUTLINE
-    */
 
     drawPixelGlyph(
         letter.char,
@@ -530,10 +760,6 @@ function drawLogoLetter(letter){
     );
 
 
-    /*
-        CYAN GHOST
-    */
-
     drawPixelGlyph(
         letter.char,
         x - 4,
@@ -542,10 +768,6 @@ function drawLogoLetter(letter){
         "#54f5ff"
     );
 
-
-    /*
-        RED GHOST
-    */
 
     drawPixelGlyph(
         letter.char,
@@ -556,10 +778,6 @@ function drawLogoLetter(letter){
     );
 
 
-    /*
-        YELLOW MICRO GHOST
-    */
-
     drawPixelGlyph(
         letter.char,
         x + 1,
@@ -569,10 +787,6 @@ function drawLogoLetter(letter){
     );
 
 
-    /*
-        MAIN GREY BODY
-    */
-
     drawPixelGlyph(
         letter.char,
         x,
@@ -581,11 +795,6 @@ function drawLogoLetter(letter){
         "#d9d9d9"
     );
 
-
-    /*
-        BRIGHT WHITE highlight,
-        slightly offset upward.
-    */
 
     drawPixelGlyph(
         letter.char,
@@ -598,19 +807,19 @@ function drawLogoLetter(letter){
 }
 
 
+
 function drawLogo(){
 
-    /*
-        Tiny glitch movement occasionally happens
-        to individual letters.
-    */
+    for(
+        const letter of logoLetters
+    ){
 
-    for(const letter of logoLetters){
-
-        let originalX =
+        const originalX =
             letter.x;
 
+
         let glitchX = 0;
+
 
         if(
             letter.landed &&
@@ -624,10 +833,14 @@ function drawLogo(){
 
         }
 
+
         letter.x =
-            originalX + glitchX;
+            originalX +
+            glitchX;
+
 
         drawLogoLetter(letter);
+
 
         letter.x =
             originalX;
@@ -635,30 +848,40 @@ function drawLogo(){
     }
 
 
-    /*
-        Tiny horizontal scan fragments.
-    */
-
     if(
         Math.floor(frame / 18) % 5 === 0
     ){
 
-        for(let i = 0; i < 3; i++){
+        for(
+            let i = 0;
+            i < 3;
+            i++
+        ){
 
             const y =
                 70 +
-                Math.random() * 170;
+                Math.random() *
+                170;
+
 
             px(
+
                 90 +
-                Math.random() * 400,
+                Math.random() *
+                400,
+
                 y,
+
                 25 +
-                Math.random() * 65,
+                Math.random() *
+                65,
+
                 1,
+
                 Math.random() < .5
                 ? "#54f5ff"
                 : "#ff315d"
+
             );
 
         }
@@ -668,71 +891,118 @@ function drawLogo(){
 }
 
 
+
 /* =========================================================
    INPUT
    ========================================================= */
 
-window.addEventListener("keydown", e => {
+window.addEventListener(
+    "keydown",
+    e => {
 
-    keys[e.code] = true;
-
-    if([
-        "ArrowUp",
-        "ArrowDown",
-        "ArrowLeft",
-        "ArrowRight",
-        "Space"
-    ].includes(e.code)){
-
-        e.preventDefault();
-
-    }
+        keys[e.code] = true;
 
 
-    if(
-        e.code === "Enter" &&
-        (
-            state === "title" ||
+        if([
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+            "Space"
+        ].includes(e.code)){
+
+            e.preventDefault();
+
+        }
+
+
+        if(
+            e.code === "Enter" &&
+            (
+                state === "title" ||
+                state === "attract"
+            )
+        ){
+
+            startGame();
+
+        }
+
+
+        if(
+            e.code === "Space" &&
+            (
+                state === "title" ||
+                state === "attract"
+            )
+        ){
+
+            startGame();
+
+        }
+
+
+        if(
+            state === "attract" &&
+            [
+                "ArrowUp",
+                "ArrowDown",
+                "ArrowLeft",
+                "ArrowRight",
+                "KeyW",
+                "KeyA",
+                "KeyS",
+                "KeyD"
+            ].includes(e.code)
+        ){
+
+            startGame();
+
+        }
+
+
+        if(
+            e.code === "KeyR" &&
             state === "gameover"
-        )
-    ){
+        ){
 
-        startGame();
+            startGame();
 
-    }
-
-
-    if(
-        e.code === "KeyR" &&
-        state === "gameover"
-    ){
-
-        startGame();
-
-    }
+        }
 
 
-    if(
-        e.code === "KeyP" &&
-        state === "playing"
-    ){
+        if(
+            e.code === "KeyP" &&
+            state === "playing"
+        ){
 
-        paused = !paused;
+            paused = !paused;
+
+        }
 
     }
+);
 
-});
+
+window.addEventListener(
+    "keyup",
+    e => {
+
+        keys[e.code] = false;
+
+    }
+);
 
 
-window.addEventListener("keyup", e => {
 
-    keys[e.code] = false;
-
-});
-
+/* =========================================================
+   MOBILE CONTROLS
+   ========================================================= */
 
 document
-.querySelectorAll(".mobile-controls button")
+.querySelectorAll(
+    ".mobile-controls button"
+)
 .forEach(button => {
 
     const key =
@@ -746,6 +1016,28 @@ document
             e.preventDefault();
 
             keys[key] = true;
+
+
+            if(
+                (
+                    state === "title" ||
+                    state === "attract"
+                ) &&
+                key === "Space"
+            ){
+
+                startGame();
+
+            }
+
+
+            if(
+                state === "attract"
+            ){
+
+                startGame();
+
+            }
 
         }
     );
@@ -763,6 +1055,7 @@ document
     );
 
 });
+
 
 
 /* =========================================================
@@ -796,11 +1089,12 @@ function initAudio(){
 }
 
 
+
 function beep(
     frequency,
     duration,
     type = "square",
-    volume = 0.025
+    volume = .025
 ){
 
     if(!audioCtx) return;
@@ -809,11 +1103,14 @@ function beep(
     const oscillator =
         audioCtx.createOscillator();
 
+
     const gain =
         audioCtx.createGain();
 
 
-    oscillator.type = type;
+    oscillator.type =
+        type;
+
 
     oscillator.frequency.value =
         frequency;
@@ -826,7 +1123,8 @@ function beep(
 
 
     gain.gain.exponentialRampToValueAtTime(
-        0.001,
+        .001,
+
         audioCtx.currentTime +
         duration
     );
@@ -841,12 +1139,14 @@ function beep(
 
     oscillator.start();
 
+
     oscillator.stop(
         audioCtx.currentTime +
         duration
     );
 
 }
+
 
 
 /* =========================================================
@@ -857,42 +1157,96 @@ function startGame(){
 
     initAudio();
 
-    state = "playing";
 
-    paused = false;
+    state =
+        "playing";
 
-    score = 0;
 
-    lives = 3;
+    paused =
+        false;
 
-    level = 1;
 
-    frame = 0;
+    score =
+        0;
 
-    enemyTimer = 10;
 
-    heartTimer = 650;
+    lives =
+        3;
 
-    shake = 0;
 
-    bullets = [];
+    level =
+        1;
 
-    enemies = [];
 
-    hearts = [];
+    frame =
+        0;
 
-    particles = [];
+
+    enemyTimer =
+        10;
+
+
+    heartTimer =
+        650;
+
+
+    powerUpTimer =
+        500;
+
+
+    shake =
+        0;
+
+
+    bullets =
+        [];
+
+
+    enemies =
+        [];
+
+
+    hearts =
+        [];
+
+
+    powerUps =
+        [];
+
+
+    particles =
+        [];
+
+
+    attractTimer =
+        0;
+
+
+    attractFrame =
+        0;
+
+
+    demoScore =
+        0;
 
 
     player.x =
         W / 2;
 
+
     player.y =
         H - 75;
 
-    player.cooldown = 0;
 
-    player.invincible = 90;
+    player.cooldown =
+        0;
+
+
+    player.invincible =
+        90;
+
+
+    resetWeapon();
 
 
     beep(
@@ -902,139 +1256,72 @@ function startGame(){
 
 
     setTimeout(
-        () => beep(
-            660,
-            .12
-        ),
+        () =>
+            beep(
+                660,
+                .12
+            ),
         90
     );
 
 }
 
 
+
 /* =========================================================
-   ENEMY SPAWNING
+   WEAPON SYSTEM
    ========================================================= */
 
-function spawnEnemy(){
-
-    const roll =
-        Math.random();
+const WEAPON_DURATION = 60 * 14;
 
 
-    if(
-        roll < .58
-    ){
+const WEAPON_DATA = {
 
-        enemies.push({
+    normal:{
+        name:"NORMAL",
+        color:"#ffffff"
+    },
 
-            type:"drone",
+    spread:{
+        name:"SPREAD",
+        color:"#54f5ff"
+    },
 
-            x:
-                30 +
-                Math.random() *
-                (W - 60),
+    rapid:{
+        name:"RAPID",
+        color:"#fff04a"
+    },
 
-            y:-35,
+    laser:{
+        name:"LASER",
+        color:"#ff315d"
+    },
 
-            w:34,
-            h:28,
-
-            speed:
-                1.1 +
-                Math.random() * .8 +
-                level * .06,
-
-            hp:1,
-
-            phase:
-                Math.random() *
-                Math.PI *
-                2
-
-        });
-
+    missile:{
+        name:"MISSILE",
+        color:"#a84cff"
     }
 
-
-    else if(
-        roll < .88
-    ){
-
-        enemies.push({
-
-            type:"tank",
-
-            x:
-                35 +
-                Math.random() *
-                (W - 70),
-
-            y:-45,
-
-            w:46,
-            h:38,
-
-            speed:
-                .75 +
-                Math.random() * .65 +
-                level * .045,
-
-            hp:2,
-
-            phase:
-                Math.random() *
-                Math.PI *
-                2
-
-        });
-
-    }
+};
 
 
-    else{
 
-        enemies.push({
+function resetWeapon(){
 
-            type:"elite",
+    player.weapon =
+        "normal";
 
-            x:
-                50 +
-                Math.random() *
-                (W - 100),
-
-            y:-55,
-
-            w:56,
-            h:48,
-
-            speed:
-                .55 +
-                Math.random() * .5 +
-                level * .035,
-
-            hp:4,
-
-            phase:
-                Math.random() *
-                Math.PI *
-                2
-
-        });
-
-    }
+    player.weaponTimer =
+        0;
 
 }
 
 
-/* =========================================================
-   HEART PICKUPS
-   ========================================================= */
 
-function spawnHeart(){
+function giveWeapon(type){
 
     if(
-        lives >= MAX_LIVES
+        !WEAPON_DATA[type]
     ){
 
         return;
@@ -1042,30 +1329,283 @@ function spawnHeart(){
     }
 
 
-    hearts.push({
+    player.weapon =
+        type;
 
-        x:
-            35 +
-            Math.random() *
-            (W - 70),
 
-        y:-30,
+    player.weaponTimer =
+        WEAPON_DURATION;
 
-        w:24,
-        h:24,
 
-        speed:
-            .8 +
-            Math.random() * .35,
+    shake =
+        3;
+
+
+    explode(
+        player.x,
+        player.y,
+        16
+    );
+
+
+    beep(
+        420,
+        .07,
+        "square",
+        .03
+    );
+
+
+    setTimeout(
+        () =>
+            beep(
+                620,
+                .07,
+                "square",
+                .03
+            ),
+        70
+    );
+
+
+    setTimeout(
+        () =>
+            beep(
+                840,
+                .1,
+                "square",
+                .028
+            ),
+        140
+    );
+
+}
+
+
+
+function updateWeapon(){
+
+    if(
+        player.weapon === "normal"
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        player.weaponTimer > 0
+    ){
+
+        player.weaponTimer--;
+
+    }
+
+
+    if(
+        player.weaponTimer <= 0
+    ){
+
+        resetWeapon();
+
+    }
+
+}
+
+
+
+/* =========================================================
+   POWER-UP SPAWNING
+   ========================================================= */
+
+function choosePowerUp(){
+
+    const roll =
+        Math.random();
+
+
+    if(
+        roll < .30
+    ){
+
+        return "spread";
+
+    }
+
+
+    if(
+        roll < .55
+    ){
+
+        return "rapid";
+
+    }
+
+
+    if(
+        roll < .78
+    ){
+
+        return "laser";
+
+    }
+
+
+    return "missile";
+
+}
+
+
+
+function spawnPowerUp(
+    x,
+    y,
+    forcedType = null
+){
+
+    const type =
+        forcedType ||
+        choosePowerUp();
+
+
+    powerUps.push({
+
+        type,
+
+        x,
+
+        y,
+
+        w:26,
+
+        h:26,
+
+        speed:.75,
 
         phase:
             Math.random() *
             Math.PI *
-            2
+            2,
+
+        life:
+            60 * 15
 
     });
 
 }
+
+
+
+function maybeDropPowerUp(
+    enemy
+){
+
+    /*
+        Elite enemies have a better chance.
+    */
+
+    let chance =
+        enemy.type === "elite"
+        ? .20
+        : enemy.type === "tank"
+        ? .10
+        : .055;
+
+
+    if(
+        Math.random() <
+        chance
+    ){
+
+        spawnPowerUp(
+            enemy.x,
+            enemy.y
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   POWER-UP UPDATE
+   ========================================================= */
+
+function updatePowerUps(){
+
+    for(
+        const powerUp of powerUps
+    ){
+
+        powerUp.y +=
+            powerUp.speed;
+
+
+        powerUp.x +=
+            Math.sin(
+                frame * .06 +
+                powerUp.phase
+            ) * .5;
+
+
+        powerUp.life--;
+
+    }
+
+
+    for(
+        let i =
+            powerUps.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        const powerUp =
+            powerUps[i];
+
+
+        if(
+            hit(
+                player,
+                powerUp
+            )
+        ){
+
+            giveWeapon(
+                powerUp.type
+            );
+
+
+            powerUps.splice(
+                i,
+                1
+            );
+
+
+            continue;
+
+        }
+
+
+        if(
+            powerUp.y >
+                H + 50 ||
+            powerUp.life <= 0
+        ){
+
+            powerUps.splice(
+                i,
+                1
+            );
+
+        }
+
+    }
+
+}
+
 
 
 /* =========================================================
@@ -1083,22 +1623,226 @@ function shoot(){
     }
 
 
+    if(
+        player.weapon === "spread"
+    ){
+
+        bullets.push(
+
+            {
+                x:player.x,
+                y:player.y - 28,
+                w:5,
+                h:18,
+                speed:10,
+                vx:0,
+                damage:1,
+                type:"spread"
+            },
+
+            {
+                x:player.x - 5,
+                y:player.y - 25,
+                w:5,
+                h:18,
+                speed:9.2,
+                vx:-2.1,
+                damage:1,
+                type:"spread"
+            },
+
+            {
+                x:player.x + 5,
+                y:player.y - 25,
+                w:5,
+                h:18,
+                speed:9.2,
+                vx:2.1,
+                damage:1,
+                type:"spread"
+            }
+
+        );
+
+
+        player.cooldown =
+            10;
+
+
+        beep(
+            820,
+            .035,
+            "square",
+            .018
+        );
+
+
+        return;
+
+    }
+
+
+
+    if(
+        player.weapon === "rapid"
+    ){
+
+        bullets.push({
+
+            x:player.x,
+
+            y:player.y - 28,
+
+            w:5,
+
+            h:18,
+
+            speed:11,
+
+            vx:0,
+
+            damage:1,
+
+            type:"rapid"
+
+        });
+
+
+        player.cooldown =
+            3;
+
+
+        beep(
+            1050,
+            .025,
+            "square",
+            .014
+        );
+
+
+        return;
+
+    }
+
+
+
+    if(
+        player.weapon === "laser"
+    ){
+
+        bullets.push({
+
+            x:player.x,
+
+            y:player.y - 40,
+
+            w:10,
+
+            h:55,
+
+            speed:13,
+
+            vx:0,
+
+            damage:3,
+
+            type:"laser",
+
+            piercing:true
+
+        });
+
+
+        player.cooldown =
+            13;
+
+
+        beep(
+            1250,
+            .045,
+            "sawtooth",
+            .02
+        );
+
+
+        return;
+
+    }
+
+
+
+    if(
+        player.weapon === "missile"
+    ){
+
+        bullets.push({
+
+            x:player.x,
+
+            y:player.y - 30,
+
+            w:9,
+
+            h:22,
+
+            speed:7,
+
+            vx:0,
+
+            damage:2,
+
+            type:"missile",
+
+            explosive:true
+
+        });
+
+
+        player.cooldown =
+            18;
+
+
+        beep(
+            260,
+            .06,
+            "sawtooth",
+            .025
+        );
+
+
+        return;
+
+    }
+
+
+
+    /* NORMAL */
+
     bullets.push({
 
-        x:player.x,
+        x:
+            player.x,
 
-        y:player.y - 28,
+        y:
+            player.y - 28,
 
         w:5,
 
         h:18,
 
-        speed:10
+        speed:10,
+
+        vx:0,
+
+        damage:1,
+
+        type:"normal"
 
     });
 
 
-    player.cooldown = 7;
+    player.cooldown =
+        7;
 
 
     beep(
@@ -1109,6 +1853,7 @@ function shoot(){
     );
 
 }
+
 
 
 /* =========================================================
@@ -1140,6 +1885,7 @@ function hit(a,b){
     );
 
 }
+
 
 
 /* =========================================================
@@ -1206,6 +1952,7 @@ function explode(
 }
 
 
+
 /* =========================================================
    PLAYER DAMAGE
    ========================================================= */
@@ -1224,9 +1971,13 @@ function damagePlayer(){
 
     lives--;
 
-    player.invincible = 110;
 
-    shake = 9;
+    player.invincible =
+        110;
+
+
+    shake =
+        9;
 
 
     explode(
@@ -1248,13 +1999,16 @@ function damagePlayer(){
         lives <= 0
     ){
 
-        lives = 0;
+        lives =
+            0;
+
 
         gameOver();
 
     }
 
 }
+
 
 
 /* =========================================================
@@ -1296,7 +2050,8 @@ function collectHeart(index){
     );
 
 
-    shake = 3;
+    shake =
+        3;
 
 
     beep(
@@ -1308,39 +2063,25 @@ function collectHeart(index){
 
 
     setTimeout(
-        () => beep(
-            930,
-            .11,
-            "square",
-            .03
-        ),
+        () =>
+            beep(
+                930,
+                .11,
+                "square",
+                .03
+            ),
         80
     );
 
 }
 
 
+
 /* =========================================================
-   UPDATE
+   UPDATE STARS
    ========================================================= */
 
-function update(){
-
-    frame++;
-
-
-    /* title logo */
-
-    if(
-        state === "title"
-    ){
-
-        updateLogo();
-
-    }
-
-
-    /* stars */
+function updateStars(){
 
     for(
         const star of stars
@@ -1354,7 +2095,9 @@ function update(){
             star.y > H
         ){
 
-            star.y = -2;
+            star.y =
+                -2;
+
 
             star.x =
                 Math.random() *
@@ -1364,16 +2107,15 @@ function update(){
 
     }
 
+}
 
-    if(
-        state !== "playing" ||
-        paused
-    ){
 
-        return;
 
-    }
+/* =========================================================
+   NORMAL GAME UPDATE
+   ========================================================= */
 
+function updateGame(){
 
     level =
         Math.floor(
@@ -1474,6 +2216,9 @@ function update(){
     }
 
 
+    updateWeapon();
+
+
     /* ENEMY SPAWN */
 
     enemyTimer--;
@@ -1518,6 +2263,180 @@ function update(){
     }
 
 
+    updateObjects();
+
+}
+
+
+
+/* =========================================================
+   ENEMY SPAWNING
+   ========================================================= */
+
+function spawnEnemy(){
+
+    const roll =
+        Math.random();
+
+
+    if(
+        roll < .58
+    ){
+
+        enemies.push({
+
+            type:"drone",
+
+            x:
+                30 +
+                Math.random() *
+                (W - 60),
+
+            y:-35,
+
+            w:34,
+
+            h:28,
+
+            speed:
+                1.1 +
+                Math.random() * .8 +
+                level * .06,
+
+            hp:1,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+
+    else if(
+        roll < .88
+    ){
+
+        enemies.push({
+
+            type:"tank",
+
+            x:
+                35 +
+                Math.random() *
+                (W - 70),
+
+            y:-45,
+
+            w:46,
+
+            h:38,
+
+            speed:
+                .75 +
+                Math.random() * .65 +
+                level * .045,
+
+            hp:2,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+
+    else{
+
+        enemies.push({
+
+            type:"elite",
+
+            x:
+                50 +
+                Math.random() *
+                (W - 100),
+
+            y:-55,
+
+            w:56,
+
+            h:48,
+
+            speed:
+                .55 +
+                Math.random() * .5 +
+                level * .035,
+
+            hp:4,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+}
+
+
+
+/* =========================================================
+   HEARTS
+   ========================================================= */
+
+function spawnHeart(){
+
+    if(
+        lives >= MAX_LIVES
+    ){
+
+        return;
+
+    }
+
+
+    hearts.push({
+
+        x:
+            35 +
+            Math.random() *
+            (W - 70),
+
+        y:-30,
+
+        w:24,
+
+        h:24,
+
+        speed:
+            .8 +
+            Math.random() * .35,
+
+        phase:
+            Math.random() *
+            Math.PI *
+            2
+
+    });
+
+}
+
+
+
+/* =========================================================
+   OBJECT UPDATE
+   ========================================================= */
+
+function updateObjects(){
+
     /* BULLETS */
 
     for(
@@ -1527,14 +2446,21 @@ function update(){
         bullet.y -=
             bullet.speed;
 
+
+        bullet.x +=
+            bullet.vx || 0;
+
     }
 
 
     bullets =
         bullets.filter(
             bullet =>
-                bullet.y > -35
+                bullet.y > -70 &&
+                bullet.x > -50 &&
+                bullet.x < W + 50
         );
+
 
 
     /* ENEMIES */
@@ -1575,6 +2501,7 @@ function update(){
     }
 
 
+
     /* HEARTS */
 
     for(
@@ -1594,10 +2521,18 @@ function update(){
     }
 
 
+
+    /* POWER-UPS */
+
+    updatePowerUps();
+
+
+
     /* BULLET -> ENEMY */
 
     for(
-        let i = enemies.length - 1;
+        let i =
+            enemies.length - 1;
         i >= 0;
         i--
     ){
@@ -1607,7 +2542,8 @@ function update(){
 
 
         for(
-            let j = bullets.length - 1;
+            let j =
+                bullets.length - 1;
             j >= 0;
             j--
         ){
@@ -1623,20 +2559,98 @@ function update(){
                 )
             ){
 
-                bullets.splice(
-                    j,
-                    1
-                );
-
-
-                enemy.hp--;
+                enemy.hp -=
+                    bullet.damage || 1;
 
 
                 explode(
                     bullet.x,
                     bullet.y,
-                    5
+                    bullet.type === "laser"
+                    ? 3
+                    : 5
                 );
+
+
+                /*
+                    Missile explosion.
+                */
+
+                if(
+                    bullet.explosive
+                ){
+
+                    explode(
+                        bullet.x,
+                        bullet.y,
+                        15
+                    );
+
+
+                    for(
+                        let k =
+                            enemies.length - 1;
+                        k >= 0;
+                        k--
+                    ){
+
+                        if(
+                            k === i
+                        ){
+
+                            continue;
+
+                        }
+
+
+                        const nearby =
+                            enemies[k];
+
+
+                        const dx =
+                            nearby.x -
+                            bullet.x;
+
+
+                        const dy =
+                            nearby.y -
+                            bullet.y;
+
+
+                        const distance =
+                            Math.sqrt(
+                                dx * dx +
+                                dy * dy
+                            );
+
+
+                        if(
+                            distance < 65
+                        ){
+
+                            nearby.hp--;
+
+                        }
+
+                    }
+
+                }
+
+
+                /*
+                    Non-piercing bullets disappear.
+                */
+
+                if(
+                    !bullet.piercing
+                ){
+
+                    bullets.splice(
+                        j,
+                        1
+                    );
+
+                }
 
 
                 if(
@@ -1651,7 +2665,8 @@ function update(){
                         : 50;
 
 
-                    score += points;
+                    score +=
+                        points;
 
 
                     explode(
@@ -1660,6 +2675,11 @@ function update(){
                         enemy.type === "elite"
                         ? 36
                         : 24
+                    );
+
+
+                    maybeDropPowerUp(
+                        enemy
                     );
 
 
@@ -1697,6 +2717,20 @@ function update(){
                 }
 
 
+                /*
+                    A piercing laser can hit the
+                    same enemy only once per frame.
+                */
+
+                if(
+                    bullet.piercing
+                ){
+
+                    continue;
+
+                }
+
+
                 break;
 
             }
@@ -1706,6 +2740,7 @@ function update(){
     }
 
 
+
     /* PLAYER -> ENEMY */
 
     if(
@@ -1713,7 +2748,8 @@ function update(){
     ){
 
         for(
-            let i = enemies.length - 1;
+            let i =
+                enemies.length - 1;
             i >= 0;
             i--
         ){
@@ -1743,10 +2779,12 @@ function update(){
     }
 
 
+
     /* PLAYER -> HEART */
 
     for(
-        let i = hearts.length - 1;
+        let i =
+            hearts.length - 1;
         i >= 0;
         i--
     ){
@@ -1767,7 +2805,8 @@ function update(){
     }
 
 
-    /* MISSED ENEMIES */
+
+    /* MISSED OBJECTS */
 
     enemies =
         enemies.filter(
@@ -1783,7 +2822,875 @@ function update(){
         );
 
 
+
     /* PARTICLES */
+
+    for(
+        const particle of particles
+    ){
+
+        particle.x +=
+            particle.vx;
+
+
+        particle.y +=
+            particle.vy;
+
+
+        particle.vy +=
+            .035;
+
+
+        particle.life--;
+
+    }
+
+
+    particles =
+        particles.filter(
+            particle =>
+                particle.life > 0
+        );
+
+
+    if(
+        shake > 0
+    ){
+
+        shake--;
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ATTRACT MODE
+   ========================================================= */
+
+function startAttractMode(){
+
+    state =
+        "attract";
+
+
+    attractFrame =
+        0;
+
+
+    demoScore =
+        0;
+
+
+    demoLives =
+        3;
+
+
+    demoLevel =
+        1;
+
+
+    bullets =
+        [];
+
+
+    enemies =
+        [];
+
+
+    hearts =
+        [];
+
+
+    powerUps =
+        [];
+
+
+    particles =
+        [];
+
+
+    player.x =
+        W / 2;
+
+
+    player.y =
+        H - 90;
+
+
+    player.cooldown =
+        0;
+
+
+    player.invincible =
+        999999;
+
+
+    resetWeapon();
+
+
+    demoTargetX =
+        W / 2;
+
+
+    demoTargetY =
+        H - 100;
+
+}
+
+
+
+function exitAttractMode(){
+
+    attractTimer =
+        0;
+
+
+    attractFrame =
+        0;
+
+
+    state =
+        "title";
+
+
+    bullets =
+        [];
+
+
+    enemies =
+        [];
+
+
+    hearts =
+        [];
+
+
+    powerUps =
+        [];
+
+
+    particles =
+        [];
+
+
+    resetWeapon();
+
+
+    player.x =
+        W / 2;
+
+
+    player.y =
+        H - 75;
+
+}
+
+
+
+/* =========================================================
+   DEMO ENEMY SPAWN
+   ========================================================= */
+
+function spawnDemoEnemy(){
+
+    const roll =
+        Math.random();
+
+
+    if(
+        roll < .52
+    ){
+
+        enemies.push({
+
+            type:"drone",
+
+            x:
+                30 +
+                Math.random() *
+                (W - 60),
+
+            y:-35,
+
+            w:34,
+
+            h:28,
+
+            speed:
+                1.15 +
+                Math.random() * .8 +
+                demoLevel * .07,
+
+            hp:1,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+    else if(
+        roll < .84
+    ){
+
+        enemies.push({
+
+            type:"tank",
+
+            x:
+                35 +
+                Math.random() *
+                (W - 70),
+
+            y:-45,
+
+            w:46,
+
+            h:38,
+
+            speed:
+                .8 +
+                Math.random() * .65 +
+                demoLevel * .05,
+
+            hp:2,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+    else{
+
+        enemies.push({
+
+            type:"elite",
+
+            x:
+                50 +
+                Math.random() *
+                (W - 100),
+
+            y:-55,
+
+            w:56,
+
+            h:48,
+
+            speed:
+                .6 +
+                Math.random() * .5 +
+                demoLevel * .04,
+
+            hp:4,
+
+            phase:
+                Math.random() *
+                Math.PI *
+                2
+
+        });
+
+    }
+
+}
+
+
+
+/* =========================================================
+   DEMO POWER-UP
+   ========================================================= */
+
+function spawnDemoPowerUp(){
+
+    spawnPowerUp(
+
+        45 +
+        Math.random() *
+        (W - 90),
+
+        -30
+
+    );
+
+}
+
+
+
+/* =========================================================
+   DEMO UPDATE
+   ========================================================= */
+
+function updateAttract(){
+
+    attractFrame++;
+
+
+    if(
+        attractFrame >=
+        ATTRACT_DURATION
+    ){
+
+        exitAttractMode();
+
+        return;
+
+    }
+
+
+    demoLevel =
+        Math.floor(
+            attractFrame / 700
+        ) + 1;
+
+
+    if(
+        attractFrame % 100 === 0
+    ){
+
+        demoTargetX =
+            60 +
+            Math.random() *
+            (W - 120);
+
+
+        demoTargetY =
+            95 +
+            Math.random() *
+            230;
+
+    }
+
+
+    if(
+        player.x <
+        demoTargetX - 3
+    ){
+
+        player.x +=
+            player.speed * .7;
+
+    }
+
+
+    if(
+        player.x >
+        demoTargetX + 3
+    ){
+
+        player.x -=
+            player.speed * .7;
+
+    }
+
+
+    if(
+        player.y <
+        demoTargetY - 3
+    ){
+
+        player.y +=
+            player.speed * .45;
+
+    }
+
+
+    if(
+        player.y >
+        demoTargetY + 3
+    ){
+
+        player.y -=
+            player.speed * .45;
+
+    }
+
+
+    player.x =
+        Math.max(
+            28,
+            Math.min(
+                W - 28,
+                player.x
+            )
+        );
+
+
+    player.y =
+        Math.max(
+            70,
+            Math.min(
+                H - 70,
+                player.y
+            )
+        );
+
+
+    if(
+        player.cooldown > 0
+    ){
+
+        player.cooldown--;
+
+    }
+
+
+    /*
+        Occasionally the demo changes weapon.
+    */
+
+    if(
+        attractFrame > 1 &&
+        attractFrame % 520 === 0
+    ){
+
+        giveWeapon(
+            choosePowerUp()
+        );
+
+    }
+
+
+    if(
+        player.cooldown <= 0
+    ){
+
+        shoot();
+
+    }
+
+
+    enemyTimer--;
+
+
+    if(
+        enemyTimer <= 0
+    ){
+
+        spawnDemoEnemy();
+
+
+        enemyTimer =
+            Math.max(
+                23,
+                42 -
+                demoLevel * 2
+            );
+
+    }
+
+
+    heartTimer--;
+
+
+    if(
+        heartTimer <= 0
+    ){
+
+        spawnDemoHeart();
+
+
+        heartTimer =
+            450 +
+            Math.floor(
+                Math.random() *
+                300
+            );
+
+    }
+
+
+    /*
+        Demo power-up drops.
+    */
+
+    if(
+        attractFrame % 360 === 0
+    ){
+
+        spawnDemoPowerUp();
+
+    }
+
+
+    updateDemoObjects();
+
+}
+
+
+
+/* =========================================================
+   DEMO HEART
+   ========================================================= */
+
+function spawnDemoHeart(){
+
+    hearts.push({
+
+        x:
+            35 +
+            Math.random() *
+            (W - 70),
+
+        y:-30,
+
+        w:24,
+
+        h:24,
+
+        speed:
+            .8 +
+            Math.random() * .35,
+
+        phase:
+            Math.random() *
+            Math.PI *
+            2
+
+    });
+
+}
+
+
+
+/* =========================================================
+   DEMO OBJECT UPDATE
+   ========================================================= */
+
+function updateDemoObjects(){
+
+    for(
+        const bullet of bullets
+    ){
+
+        bullet.y -=
+            bullet.speed;
+
+
+        bullet.x +=
+            bullet.vx || 0;
+
+    }
+
+
+    bullets =
+        bullets.filter(
+            bullet =>
+                bullet.y > -70
+        );
+
+
+
+    for(
+        const enemy of enemies
+    ){
+
+        enemy.y +=
+            enemy.speed;
+
+
+        if(
+            enemy.type === "drone"
+        ){
+
+            enemy.x +=
+                Math.sin(
+                    frame * .035 +
+                    enemy.phase
+                ) * .7;
+
+        }
+
+
+        if(
+            enemy.type === "elite"
+        ){
+
+            enemy.x +=
+                Math.sin(
+                    frame * .022 +
+                    enemy.phase
+                ) * 1;
+
+        }
+
+    }
+
+
+
+    for(
+        const heart of hearts
+    ){
+
+        heart.y +=
+            heart.speed;
+
+
+        heart.x +=
+            Math.sin(
+                frame * .04 +
+                heart.phase
+            ) * .35;
+
+    }
+
+
+
+    updatePowerUps();
+
+
+
+    /* BULLET COLLISIONS */
+
+    for(
+        let i =
+            enemies.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        const enemy =
+            enemies[i];
+
+
+        for(
+            let j =
+                bullets.length - 1;
+            j >= 0;
+            j--
+        ){
+
+            const bullet =
+                bullets[j];
+
+
+            if(
+                hit(
+                    enemy,
+                    bullet
+                )
+            ){
+
+                enemy.hp -=
+                    bullet.damage || 1;
+
+
+                explode(
+                    bullet.x,
+                    bullet.y,
+                    5
+                );
+
+
+                if(
+                    !bullet.piercing
+                ){
+
+                    bullets.splice(
+                        j,
+                        1
+                    );
+
+                }
+
+
+                if(
+                    enemy.hp <= 0
+                ){
+
+                    const points =
+                        enemy.type === "elite"
+                        ? 250
+                        : enemy.type === "tank"
+                        ? 100
+                        : 50;
+
+
+                    demoScore +=
+                        points;
+
+
+                    explode(
+                        enemy.x,
+                        enemy.y,
+                        enemy.type === "elite"
+                        ? 30
+                        : 20
+                    );
+
+
+                    if(
+                        Math.random() < .14
+                    ){
+
+                        spawnPowerUp(
+                            enemy.x,
+                            enemy.y
+                        );
+
+                    }
+
+
+                    enemies.splice(
+                        i,
+                        1
+                    );
+
+
+                    shake =
+                        enemy.type === "elite"
+                        ? 5
+                        : 2;
+
+                }
+
+
+                if(
+                    !bullet.piercing
+                ){
+
+                    break;
+
+                }
+
+            }
+
+        }
+
+    }
+
+
+
+    /* DEMO HEARTS */
+
+    for(
+        let i =
+            hearts.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        if(
+            hit(
+                player,
+                hearts[i]
+            )
+        ){
+
+            explode(
+                hearts[i].x,
+                hearts[i].y,
+                15
+            );
+
+
+            hearts.splice(
+                i,
+                1
+            );
+
+
+            demoLives =
+                Math.min(
+                    5,
+                    demoLives + 1
+                );
+
+        }
+
+    }
+
+
+
+    /* DEMO DAMAGE */
+
+    for(
+        let i =
+            enemies.length - 1;
+        i >= 0;
+        i--
+    ){
+
+        if(
+            hit(
+                player,
+                enemies[i]
+            )
+        ){
+
+            enemies.splice(
+                i,
+                1
+            );
+
+
+            demoLives--;
+
+
+            explode(
+                player.x,
+                player.y,
+                25
+            );
+
+
+            shake =
+                6;
+
+
+            if(
+                demoLives <= 0
+            ){
+
+                demoLives =
+                    3;
+
+
+                demoScore =
+                    Math.max(
+                        0,
+                        demoScore - 150
+                    );
+
+            }
+
+
+            player.x =
+                W / 2;
+
+
+            player.y =
+                H - 100;
+
+        }
+
+    }
+
+
+
+    enemies =
+        enemies.filter(
+            enemy =>
+                enemy.y < H + 70
+        );
+
+
+    hearts =
+        hearts.filter(
+            heart =>
+                heart.y < H + 60
+        );
+
+
 
     for(
         const particle of particles
@@ -1821,20 +3728,23 @@ function update(){
 }
 
 
+
 /* =========================================================
    GAME OVER
    ========================================================= */
 
 function gameOver(){
 
-    state = "gameover";
+    state =
+        "gameover";
 
 
     if(
         score > highScore
     ){
 
-        highScore = score;
+        highScore =
+            score;
 
 
         localStorage.setItem(
@@ -1843,6 +3753,9 @@ function gameOver(){
         );
 
     }
+
+
+    resetWeapon();
 
 
     beep(
@@ -1854,16 +3767,18 @@ function gameOver(){
 
 
     setTimeout(
-        () => beep(
-            85,
-            .25,
-            "sawtooth",
-            .035
-        ),
+        () =>
+            beep(
+                85,
+                .25,
+                "sawtooth",
+                .035
+            ),
         150
     );
 
 }
+
 
 
 /* =========================================================
@@ -1890,6 +3805,7 @@ function px(
     );
 
 }
+
 
 
 function txt(
@@ -1922,6 +3838,7 @@ function txt(
 }
 
 
+
 /* =========================================================
    BACKGROUND
    ========================================================= */
@@ -1940,8 +3857,6 @@ function drawBackground(){
     );
 
 
-    /* stars */
-
     for(
         const star of stars
     ){
@@ -1957,8 +3872,10 @@ function drawBackground(){
 
 
         px(
+
             star.x,
             star.y,
+
             star.size,
             star.size,
 
@@ -1970,12 +3887,12 @@ function drawBackground(){
                     glow + 35
                 )}
             )`
+
         );
 
     }
 
 
-    /* skyline */
 
     for(
         let x = 0;
@@ -2029,7 +3946,6 @@ function drawBackground(){
     }
 
 
-    /* horizon */
 
     px(
         0,
@@ -2040,7 +3956,6 @@ function drawBackground(){
     );
 
 
-    /* perspective grid */
 
     for(
         let i = 0;
@@ -2066,6 +3981,7 @@ function drawBackground(){
     }
 
 
+
     for(
         let y = H - 36;
         y < H;
@@ -2083,7 +3999,6 @@ function drawBackground(){
     }
 
 
-    /* neon signs */
 
     for(
         let i = 0;
@@ -2126,8 +4041,9 @@ function drawBackground(){
 }
 
 
+
 /* =========================================================
-   SPACESHIP
+   PLAYER
    ========================================================= */
 
 function drawPlayer(){
@@ -2145,16 +4061,16 @@ function drawPlayer(){
     const x =
         Math.round(player.x);
 
+
     const y =
         Math.round(player.y);
 
-
-    /* ENGINE FLAMES */
 
     const flame =
         Math.floor(
             frame / 5
         ) % 3;
+
 
 
     if(
@@ -2270,7 +4186,6 @@ function drawPlayer(){
     }
 
 
-    /* rear fins */
 
     px(
         x - 20,
@@ -2306,7 +4221,6 @@ function drawPlayer(){
     );
 
 
-    /* MAIN WINGS */
 
     px(
         x - 17,
@@ -2326,7 +4240,6 @@ function drawPlayer(){
     );
 
 
-    /* wing shadows */
 
     px(
         x - 28,
@@ -2345,7 +4258,6 @@ function drawPlayer(){
     );
 
 
-    /* cyan panels */
 
     px(
         x - 21,
@@ -2381,7 +4293,6 @@ function drawPlayer(){
     );
 
 
-    /* COCKPIT */
 
     px(
         x - 8,
@@ -2419,7 +4330,6 @@ function drawPlayer(){
     );
 
 
-    /* nose */
 
     px(
         x - 5,
@@ -2428,6 +4338,7 @@ function drawPlayer(){
         7,
         "#dce7ff"
     );
+
 
     px(
         x - 2,
@@ -2438,7 +4349,6 @@ function drawPlayer(){
     );
 
 
-    /* center body */
 
     px(
         x - 10,
@@ -2467,7 +4377,6 @@ function drawPlayer(){
     );
 
 
-    /* panel details */
 
     px(
         x - 13,
@@ -2503,7 +4412,6 @@ function drawPlayer(){
     );
 
 
-    /* lights */
 
     px(
         x - 20,
@@ -2521,11 +4429,13 @@ function drawPlayer(){
         "#54f5ff"
     );
 
+
 }
 
 
+
 /* =========================================================
-   DRONE ENEMY
+   ENEMY DRAWING
    ========================================================= */
 
 function drawDrone(enemy){
@@ -2657,9 +4567,6 @@ function drawDrone(enemy){
 }
 
 
-/* =========================================================
-   TANK ENEMY
-   ========================================================= */
 
 function drawTank(enemy){
 
@@ -2782,9 +4689,6 @@ function drawTank(enemy){
 }
 
 
-/* =========================================================
-   ELITE ENEMY
-   ========================================================= */
 
 function drawElite(enemy){
 
@@ -2939,9 +4843,6 @@ function drawElite(enemy){
 }
 
 
-/* =========================================================
-   DRAW ENEMIES
-   ========================================================= */
 
 function drawEnemies(){
 
@@ -2976,6 +4877,7 @@ function drawEnemies(){
 }
 
 
+
 /* =========================================================
    BULLETS
    ========================================================= */
@@ -2986,12 +4888,103 @@ function drawBullets(){
         const bullet of bullets
     ){
 
+        if(
+            bullet.type === "laser"
+        ){
+
+            px(
+                bullet.x - 6,
+                bullet.y,
+                12,
+                58,
+                "#ff315d"
+            );
+
+
+            px(
+                bullet.x - 2,
+                bullet.y - 8,
+                4,
+                10,
+                "#ffffff"
+            );
+
+
+            px(
+                bullet.x - 10,
+                bullet.y + 8,
+                4,
+                42,
+                "#54f5ff"
+            );
+
+
+            px(
+                bullet.x + 6,
+                bullet.y + 8,
+                4,
+                42,
+                "#54f5ff"
+            );
+
+
+            continue;
+
+        }
+
+
+
+        if(
+            bullet.type === "missile"
+        ){
+
+            px(
+                bullet.x - 5,
+                bullet.y,
+                10,
+                20,
+                "#a84cff"
+            );
+
+
+            px(
+                bullet.x - 3,
+                bullet.y - 5,
+                6,
+                6,
+                "#fff04a"
+            );
+
+
+            px(
+                bullet.x - 3,
+                bullet.y + 20,
+                6,
+                8,
+                "#ff315d"
+            );
+
+
+            continue;
+
+        }
+
+
+
+        const color =
+            bullet.type === "rapid"
+            ? "#fff04a"
+            : bullet.type === "spread"
+            ? "#54f5ff"
+            : "#5dffff";
+
+
         px(
             bullet.x - 3,
             bullet.y,
             6,
             18,
-            "#5dffff"
+            color
         );
 
 
@@ -3026,8 +5019,277 @@ function drawBullets(){
 }
 
 
+
 /* =========================================================
-   HEART PICKUPS
+   POWER-UP DRAWING
+   ========================================================= */
+
+function drawPowerUp(
+    powerUp
+){
+
+    const x =
+        Math.round(powerUp.x);
+
+    const y =
+        Math.round(
+            powerUp.y +
+            Math.sin(
+                frame * .09 +
+                powerUp.phase
+            ) * 2
+        );
+
+
+    const data =
+        WEAPON_DATA[
+            powerUp.type
+        ];
+
+
+    const color =
+        data.color;
+
+
+    /*
+        Outer rotating-ish brackets.
+    */
+
+    px(
+        x - 15,
+        y - 15,
+        5,
+        5,
+        color
+    );
+
+
+    px(
+        x + 10,
+        y - 15,
+        5,
+        5,
+        color
+    );
+
+
+    px(
+        x - 15,
+        y + 10,
+        5,
+        5,
+        color
+    );
+
+
+    px(
+        x + 10,
+        y + 10,
+        5,
+        5,
+        color
+    );
+
+
+    /*
+        Main box.
+    */
+
+    px(
+        x - 11,
+        y - 11,
+        22,
+        22,
+        "#160d22"
+    );
+
+
+    px(
+        x - 9,
+        y - 9,
+        18,
+        18,
+        color
+    );
+
+
+    px(
+        x - 6,
+        y - 6,
+        12,
+        12,
+        "#160d22"
+    );
+
+
+    /*
+        Icon.
+    */
+
+    if(
+        powerUp.type === "spread"
+    ){
+
+        px(
+            x - 2,
+            y - 7,
+            4,
+            8,
+            "#54f5ff"
+        );
+
+        px(
+            x - 7,
+            y - 3,
+            4,
+            7,
+            "#54f5ff"
+        );
+
+        px(
+            x + 3,
+            y - 3,
+            4,
+            7,
+            "#54f5ff"
+        );
+
+    }
+
+
+    else if(
+        powerUp.type === "rapid"
+    ){
+
+        px(
+            x - 3,
+            y - 7,
+            6,
+            8,
+            "#fff04a"
+        );
+
+        px(
+            x - 7,
+            y - 1,
+            10,
+            5,
+            "#fff04a"
+        );
+
+        px(
+            x - 2,
+            y + 4,
+            6,
+            4,
+            "#fff04a"
+        );
+
+    }
+
+
+    else if(
+        powerUp.type === "laser"
+    ){
+
+        px(
+            x - 2,
+            y - 8,
+            4,
+            16,
+            "#ff315d"
+        );
+
+        px(
+            x - 6,
+            y - 3,
+            12,
+            5,
+            "#ffffff"
+        );
+
+    }
+
+
+    else if(
+        powerUp.type === "missile"
+    ){
+
+        px(
+            x - 4,
+            y - 7,
+            8,
+            12,
+            "#a84cff"
+        );
+
+        px(
+            x - 2,
+            y - 10,
+            4,
+            4,
+            "#fff04a"
+        );
+
+        px(
+            x - 2,
+            y + 5,
+            4,
+            5,
+            "#ff315d"
+        );
+
+    }
+
+
+    /*
+        Little sparkle.
+    */
+
+    if(
+        Math.floor(frame / 8) % 2 === 0
+    ){
+
+        px(
+            x - 19,
+            y - 2,
+            3,
+            3,
+            "#ffffff"
+        );
+
+        px(
+            x + 16,
+            y + 5,
+            3,
+            3,
+            "#ffffff"
+        );
+
+    }
+
+}
+
+
+
+function drawPowerUps(){
+
+    for(
+        const powerUp of powerUps
+    ){
+
+        drawPowerUp(
+            powerUp
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   HEART DRAWING
    ========================================================= */
 
 function drawHeart(heart){
@@ -3047,7 +5309,8 @@ function drawHeart(heart){
 
     const y =
         Math.round(
-            heart.y + bob
+            heart.y +
+            bob
         );
 
 
@@ -3085,6 +5348,7 @@ function drawHeart(heart){
         "#ff3f72"
     );
 
+
     px(
         x - 10,
         y - 4,
@@ -3093,6 +5357,7 @@ function drawHeart(heart){
         "#ff3f72"
     );
 
+
     px(
         x - 7,
         y + 4,
@@ -3100,6 +5365,7 @@ function drawHeart(heart){
         5,
         "#ff3f72"
     );
+
 
     px(
         x - 3,
@@ -3118,6 +5384,7 @@ function drawHeart(heart){
         "#ffd1dc"
     );
 
+
     px(
         x - 3,
         y - 4,
@@ -3129,17 +5396,21 @@ function drawHeart(heart){
 }
 
 
+
 function drawHearts(){
 
     for(
         const heart of hearts
     ){
 
-        drawHeart(heart);
+        drawHeart(
+            heart
+        );
 
     }
 
 }
+
 
 
 /* =========================================================
@@ -3165,6 +5436,7 @@ function drawParticles(){
 }
 
 
+
 /* =========================================================
    HUD
    ========================================================= */
@@ -3181,7 +5453,10 @@ function drawHUD(){
 
 
     txt(
-        String(score).padStart(7,"0"),
+        String(score).padStart(
+            7,
+            "0"
+        ),
         12,
         39,
         10,
@@ -3191,7 +5466,7 @@ function drawHUD(){
 
     txt(
         "HI",
-        245,
+        190,
         22,
         7,
         "#b78cff"
@@ -3199,8 +5474,11 @@ function drawHUD(){
 
 
     txt(
-        String(highScore).padStart(7,"0"),
-        245,
+        String(highScore).padStart(
+            7,
+            "0"
+        ),
+        190,
         39,
         10,
         "#ffffff"
@@ -3209,7 +5487,7 @@ function drawHUD(){
 
     txt(
         "LV",
-        430,
+        350,
         22,
         7,
         "#b78cff"
@@ -3217,17 +5495,52 @@ function drawHUD(){
 
 
     txt(
-        String(level).padStart(2,"0"),
-        430,
+        String(level).padStart(
+            2,
+            "0"
+        ),
+        350,
         39,
         10,
         "#ffffff"
     );
 
 
+    /*
+        WEAPON
+    */
+
+    txt(
+        "WPN",
+        425,
+        22,
+        7,
+        "#b78cff"
+    );
+
+
+    const weapon =
+        WEAPON_DATA[
+            player.weapon
+        ];
+
+
+    txt(
+        weapon.name,
+        425,
+        39,
+        7,
+        weapon.color
+    );
+
+
+    /*
+        HP
+    */
+
     txt(
         "HP",
-        520,
+        535,
         22,
         7,
         "#b78cff"
@@ -3241,15 +5554,176 @@ function drawHUD(){
     ){
 
         drawHUDHeart(
-            547 + i * 18,
+            560 + i * 15,
             31,
             i < lives
         );
 
     }
 
+
+    /*
+        Weapon timer bar.
+    */
+
+    if(
+        player.weapon !== "normal"
+    ){
+
+        const ratio =
+            Math.max(
+                0,
+                player.weaponTimer /
+                WEAPON_DURATION
+            );
+
+
+        px(
+            420,
+            46,
+            95,
+            2,
+            "#241437"
+        );
+
+
+        px(
+            420,
+            46,
+            95 * ratio,
+            2,
+            weapon.color
+        );
+
+    }
+
 }
 
+
+
+/* =========================================================
+   DEMO HUD
+   ========================================================= */
+
+function drawDemoHUD(){
+
+    txt(
+        "DEMO",
+        12,
+        22,
+        7,
+        "#ff315d"
+    );
+
+
+    txt(
+        String(demoScore).padStart(
+            7,
+            "0"
+        ),
+        12,
+        39,
+        10,
+        "#ffffff"
+    );
+
+
+    txt(
+        "HI",
+        190,
+        22,
+        7,
+        "#b78cff"
+    );
+
+
+    txt(
+        String(highScore).padStart(
+            7,
+            "0"
+        ),
+        190,
+        39,
+        10,
+        "#ffffff"
+    );
+
+
+    txt(
+        "LV",
+        350,
+        22,
+        7,
+        "#b78cff"
+    );
+
+
+    txt(
+        String(demoLevel).padStart(
+            2,
+            "0"
+        ),
+        350,
+        39,
+        10,
+        "#ffffff"
+    );
+
+
+    txt(
+        "WPN",
+        425,
+        22,
+        7,
+        "#b78cff"
+    );
+
+
+    const weapon =
+        WEAPON_DATA[
+            player.weapon
+        ];
+
+
+    txt(
+        weapon.name,
+        425,
+        39,
+        7,
+        weapon.color
+    );
+
+
+    txt(
+        "HP",
+        535,
+        22,
+        7,
+        "#b78cff"
+    );
+
+
+    for(
+        let i = 0;
+        i < MAX_LIVES;
+        i++
+    ){
+
+        drawHUDHeart(
+            560 + i * 15,
+            31,
+            i < demoLives
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   HUD HEART
+   ========================================================= */
 
 function drawHUDHeart(
     x,
@@ -3310,6 +5784,76 @@ function drawHUDHeart(
 }
 
 
+
+/* =========================================================
+   INSERT COIN
+   ========================================================= */
+
+function drawInsertCoin(){
+
+    const visible =
+        Math.floor(
+            frame / 25
+        ) % 2 === 0;
+
+
+    if(
+        visible
+    ){
+
+        txt(
+            "INSERT COIN",
+            W / 2 + 3,
+            346 + 3,
+            13,
+            "#ff315d",
+            "center"
+        );
+
+
+        txt(
+            "INSERT COIN",
+            W / 2 - 3,
+            346,
+            13,
+            "#54f5ff",
+            "center"
+        );
+
+
+        txt(
+            "INSERT COIN",
+            W / 2,
+            346,
+            13,
+            "#ffffff",
+            "center"
+        );
+
+    }
+
+
+    px(
+        W / 2 - 42,
+        363,
+        84,
+        3,
+        "#38243f"
+    );
+
+
+    px(
+        W / 2 - 14,
+        366,
+        28,
+        4,
+        "#8c32ff"
+    );
+
+}
+
+
+
 /* =========================================================
    TITLE
    ========================================================= */
@@ -3318,10 +5862,6 @@ function drawTitle(){
 
     drawBackground();
 
-
-    /*
-        Floating spaceship behind the logo.
-    */
 
     const oldX =
         player.x;
@@ -3344,11 +5884,6 @@ function drawTitle(){
         ) * 9;
 
 
-    /*
-        Make the ship slightly dimmer visually
-        by letting the logo cover it.
-    */
-
     drawPlayer();
 
 
@@ -3359,16 +5894,8 @@ function drawTitle(){
         oldY;
 
 
-    /*
-        CUSTOM STAR / FALL LOGO
-    */
-
     drawLogo();
 
-
-    /*
-        Tiny year label.
-    */
 
     txt(
         "1997",
@@ -3380,26 +5907,7 @@ function drawTitle(){
     );
 
 
-    /*
-        Prompt.
-    */
-
-    if(
-        Math.floor(
-            frame / 30
-        ) % 2 === 0
-    ){
-
-        txt(
-            "PRESS ENTER",
-            W / 2,
-            355,
-            10,
-            "#ffffff",
-            "center"
-        );
-
-    }
+    drawInsertCoin();
 
 
     txt(
@@ -3454,6 +5962,112 @@ function drawTitle(){
 }
 
 
+
+/* =========================================================
+   ATTRACT DRAW
+   ========================================================= */
+
+function drawAttract(){
+
+    drawBackground();
+
+
+    drawDemoHUD();
+
+    drawBullets();
+
+    drawEnemies();
+
+    drawPowerUps();
+
+    drawHearts();
+
+    drawParticles();
+
+    drawPlayer();
+
+
+    txt(
+        "DEMO MODE",
+        W / 2,
+        58,
+        8,
+        "#b78cff",
+        "center"
+    );
+
+
+    const visible =
+        Math.floor(
+            frame / 25
+        ) % 2 === 0;
+
+
+    if(
+        visible
+    ){
+
+        txt(
+            "INSERT COIN",
+            W / 2 + 2,
+            H - 27 + 2,
+            11,
+            "#ff315d",
+            "center"
+        );
+
+
+        txt(
+            "INSERT COIN",
+            W / 2 - 2,
+            H - 27,
+            11,
+            "#54f5ff",
+            "center"
+        );
+
+
+        txt(
+            "INSERT COIN",
+            W / 2,
+            H - 27,
+            11,
+            "#ffffff",
+            "center"
+        );
+
+    }
+
+
+    const progress =
+        Math.min(
+            1,
+            attractFrame /
+            ATTRACT_DURATION
+        );
+
+
+    px(
+        120,
+        H - 12,
+        400,
+        2,
+        "#241437"
+    );
+
+
+    px(
+        120,
+        H - 12,
+        400 * progress,
+        2,
+        "#8c32ff"
+    );
+
+}
+
+
+
 /* =========================================================
    GAME OVER
    ========================================================= */
@@ -3463,6 +6077,8 @@ function drawGameOver(){
     drawBackground();
 
     drawEnemies();
+
+    drawPowerUps();
 
     drawHearts();
 
@@ -3546,6 +6162,68 @@ function drawGameOver(){
 }
 
 
+
+/* =========================================================
+   MAIN UPDATE
+   ========================================================= */
+
+function update(){
+
+    frame++;
+
+
+    if(
+        state === "title"
+    ){
+
+        updateLogo();
+
+
+        attractTimer++;
+
+
+        if(
+            attractTimer >=
+            ATTRACT_DELAY
+        ){
+
+            startAttractMode();
+
+        }
+
+    }
+
+
+    updateStars();
+
+
+    if(
+        state === "attract"
+    ){
+
+        updateAttract();
+
+        return;
+
+    }
+
+
+    if(
+        state !== "playing" ||
+        paused
+    ){
+
+        return;
+
+    }
+
+
+    updateGame();
+
+}
+
+
+
 /* =========================================================
    MAIN DRAW
    ========================================================= */
@@ -3588,6 +6266,15 @@ function draw(){
 
 
     else if(
+        state === "attract"
+    ){
+
+        drawAttract();
+
+    }
+
+
+    else if(
         state === "playing"
     ){
 
@@ -3598,6 +6285,8 @@ function draw(){
         drawBullets();
 
         drawEnemies();
+
+        drawPowerUps();
 
         drawHearts();
 
@@ -3653,6 +6342,7 @@ function draw(){
     ctx.restore();
 
 }
+
 
 
 /* =========================================================
