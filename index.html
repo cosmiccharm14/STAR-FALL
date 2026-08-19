@@ -4,7 +4,7 @@
 
 <meta charset="UTF-8">
 
-<meta
+<meta 
     name="viewport"
     content="width=device-width, initial-scale=1.0"
 >
@@ -390,6 +390,27 @@ let powerUps = [];
 let particles = [];
 
 let stars = [];
+
+
+/* =========================================================
+   BOSS SYSTEM
+   ---------------------------------------------------------
+   A boss appears at levels 20, 40, 60, 80 and 100.
+   Level 100 is the FINAL BOSS.
+   No campaign/stage system is added here.
+   ========================================================= */
+
+let boss = null;
+let bossBullets = [];
+let nextBossLevel = 20;
+
+const BOSS_LEVELS = [20, 40, 60, 80, 100];
+
+function isBossLevel(levelNumber){
+
+    return BOSS_LEVELS.includes(levelNumber);
+
+}
 
 
 
@@ -1216,6 +1237,18 @@ function startGame(){
 
     particles =
         [];
+
+
+    boss =
+        null;
+
+
+    bossBullets =
+        [];
+
+
+    nextBossLevel =
+        20;
 
 
     attractTimer =
@@ -2112,6 +2145,644 @@ function updateStars(){
 
 
 /* =========================================================
+   BOSS SYSTEM
+   ========================================================= */
+
+function startBoss(levelNumber){
+
+    if(
+        boss ||
+        !isBossLevel(levelNumber)
+    ){
+
+        return;
+
+    }
+
+
+    const bossIndex =
+        BOSS_LEVELS.indexOf(levelNumber);
+
+
+    const finalBoss =
+        levelNumber === 100;
+
+
+    const colors = [
+        {
+            main:"#ff315d",
+            accent:"#54f5ff",
+            glow:"#fff04a"
+        },
+        {
+            main:"#54f5ff",
+            accent:"#a84cff",
+            glow:"#ffffff"
+        },
+        {
+            main:"#ff7a35",
+            accent:"#ff315d",
+            glow:"#fff04a"
+        },
+        {
+            main:"#9b5cff",
+            accent:"#54f5ff",
+            glow:"#ff315d"
+        },
+        {
+            main:"#140d1f",
+            accent:"#a84cff",
+            glow:"#ff315d"
+        }
+    ];
+
+
+    const palette =
+        colors[bossIndex];
+
+
+    boss = {
+
+        level:levelNumber,
+
+        final:finalBoss,
+
+        name:finalBoss
+            ? "FINAL BOSS"
+            : `BOSS // ${String(levelNumber).padStart(2,"0")}`,
+
+        x:W / 2,
+
+        y:105,
+
+        w:finalBoss ? 132 : 112,
+
+        h:finalBoss ? 72 : 62,
+
+        maxHp:
+            280 + bossIndex * 140,
+
+        hp:
+            280 + bossIndex * 140,
+
+        vx:
+            finalBoss ? 1.35 : 1.05 + bossIndex * .08,
+
+        shotTimer:
+            75,
+
+        phase:
+            Math.random() * Math.PI * 2,
+
+        main:
+            palette.main,
+
+        accent:
+            palette.accent,
+
+        glow:
+            palette.glow
+
+    };
+
+
+    enemies = [];
+
+    powerUps = [];
+
+    bossBullets = [];
+
+    shake = 8;
+
+
+    explode(
+        W / 2,
+        110,
+        finalBoss ? 40 : 28
+    );
+
+
+    beep(
+        finalBoss ? 130 : 180,
+        .18,
+        "sawtooth",
+        .045
+    );
+
+
+    setTimeout(
+        () => beep(
+            finalBoss ? 90 : 120,
+            .22,
+            "square",
+            .038
+        ),
+        130
+    );
+
+}
+
+
+function updateBoss(){
+
+    if(!boss){
+        return;
+    }
+
+
+    boss.x +=
+        boss.vx;
+
+
+    if(
+        boss.x < boss.w / 2 + 20 ||
+        boss.x > W - boss.w / 2 - 20
+    ){
+
+        boss.vx *= -1;
+
+    }
+
+
+    boss.y =
+        96 +
+        Math.sin(
+            frame * .025 + boss.phase
+        ) * 12;
+
+
+    boss.shotTimer--;
+
+
+    if(
+        boss.shotTimer <= 0
+    ){
+
+        fireBossBurst();
+
+        boss.shotTimer =
+            boss.final
+            ? 42
+            : Math.max(
+                48,
+                68 -
+                BOSS_LEVELS.indexOf(boss.level) * 4
+            );
+
+    }
+
+
+    for(
+        const shot of bossBullets
+    ){
+
+        shot.y +=
+            shot.speed;
+
+        shot.x +=
+            shot.vx;
+
+    }
+
+
+    bossBullets =
+        bossBullets.filter(
+            shot =>
+                shot.y < H + 30 &&
+                shot.x > -30 &&
+                shot.x < W + 30
+        );
+
+
+    if(
+        player.invincible <= 0
+    ){
+
+        for(
+            let i = bossBullets.length - 1;
+            i >= 0;
+            i--
+        ){
+
+            if(
+                hit(
+                    player,
+                    bossBullets[i]
+                )
+            ){
+
+                bossBullets.splice(i,1);
+
+                damagePlayer();
+
+                if(state !== "playing"){
+                    return;
+                }
+
+                break;
+
+            }
+
+        }
+
+    }
+
+
+    if(
+        player.invincible <= 0 &&
+        hit(player,boss)
+    ){
+
+        damagePlayer();
+
+    }
+
+}
+
+
+function fireBossBurst(){
+
+    if(!boss){
+        return;
+    }
+
+
+    const count =
+        boss.final ? 5 : 3;
+
+
+    const spread =
+        boss.final ? .8 : .55;
+
+
+    for(
+        let i = 0;
+        i < count;
+        i++
+    ){
+
+        const offset =
+            count === 1
+            ? 0
+            : (
+                i -
+                (count - 1) / 2
+            ) * spread;
+
+
+        bossBullets.push({
+
+            x:boss.x + offset * 18,
+
+            y:boss.y + boss.h / 2,
+
+            w:8,
+
+            h:14,
+
+            speed:3.4 + (boss.level / 100) * 1.3,
+
+            vx:offset * .55
+
+        });
+
+    }
+
+
+    beep(
+        boss.final ? 170 : 220,
+        .05,
+        "square",
+        .018
+    );
+
+}
+
+
+function damageBoss(damage){
+
+    if(!boss){
+        return false;
+    }
+
+
+    boss.hp -= damage;
+
+
+    explode(
+        boss.x,
+        boss.y,
+        6
+    );
+
+
+    if(boss.hp <= 0){
+
+        defeatBoss();
+
+    }
+
+
+    return true;
+
+}
+
+
+function defeatBoss(){
+
+    if(!boss){
+        return;
+    }
+
+
+    const defeatedLevel =
+        boss.level;
+
+
+    const finalBoss =
+        boss.final;
+
+
+    const reward =
+        1200 +
+        defeatedLevel * 35;
+
+
+    score += reward;
+
+
+    explode(
+        boss.x,
+        boss.y,
+        finalBoss ? 120 : 70
+    );
+
+
+    shake =
+        finalBoss ? 16 : 10;
+
+
+    beep(
+        finalBoss ? 240 : 300,
+        .16,
+        "square",
+        .04
+    );
+
+
+    setTimeout(
+        () => beep(
+            finalBoss ? 120 : 180,
+            .22,
+            "sawtooth",
+            .04
+        ),
+        110
+    );
+
+
+    boss = null;
+
+    bossBullets = [];
+
+
+    nextBossLevel =
+        BOSS_LEVELS[
+            BOSS_LEVELS.indexOf(defeatedLevel) + 1
+        ] || Infinity;
+
+
+    if(finalBoss){
+
+        /*
+            The final boss is the end of the
+            boss chain, but the existing game-over
+            system remains unchanged.
+        */
+
+        nextBossLevel = Infinity;
+
+    }
+
+}
+
+
+function drawBoss(){
+
+    if(!boss){
+        return;
+    }
+
+
+    const x =
+        Math.round(boss.x);
+
+    const y =
+        Math.round(boss.y);
+
+
+    /* OUTER BODY */
+
+    px(
+        x - boss.w / 2,
+        y - boss.h / 2,
+        boss.w,
+        boss.h,
+        boss.accent
+    );
+
+
+    px(
+        x - boss.w / 2 + 8,
+        y - boss.h / 2 + 7,
+        boss.w - 16,
+        boss.h - 14,
+        boss.main
+    );
+
+
+    /* WINGS */
+
+    px(
+        x - boss.w / 2 - 16,
+        y - 15,
+        16,
+        30,
+        boss.accent
+    );
+
+
+    px(
+        x + boss.w / 2,
+        y - 15,
+        16,
+        30,
+        boss.accent
+    );
+
+
+    /* CENTER CORE */
+
+    px(
+        x - 18,
+        y - 19,
+        36,
+        38,
+        boss.glow
+    );
+
+
+    px(
+        x - 12,
+        y - 13,
+        24,
+        26,
+        boss.accent
+    );
+
+
+    px(
+        x - 7,
+        y - 8,
+        14,
+        16,
+        boss.final
+            ? "#ff315d"
+            : "#fff04a"
+    );
+
+
+    /* CANNONS */
+
+    px(
+        x - boss.w / 2 + 14,
+        y + 17,
+        14,
+        12,
+        boss.accent
+    );
+
+
+    px(
+        x + boss.w / 2 - 28,
+        y + 17,
+        14,
+        12,
+        boss.accent
+    );
+
+
+    /* FINAL BOSS CROWN */
+
+    if(boss.final){
+
+        px(
+            x - 20,
+            y - boss.h / 2 - 9,
+            40,
+            7,
+            "#ff315d"
+        );
+
+        px(
+            x - 12,
+            y - boss.h / 2 - 16,
+            8,
+            9,
+            "#a84cff"
+        );
+
+        px(
+            x + 4,
+            y - boss.h / 2 - 16,
+            8,
+            9,
+            "#a84cff"
+        );
+
+    }
+
+}
+
+
+function drawBossBullets(){
+
+    for(
+        const shot of bossBullets
+    ){
+
+        px(
+            shot.x - 4,
+            shot.y - 7,
+            8,
+            14,
+            boss && boss.final
+                ? "#ff315d"
+                : "#a84cff"
+        );
+
+        px(
+            shot.x - 1,
+            shot.y - 10,
+            2,
+            4,
+            "#ffffff"
+        );
+
+    }
+
+}
+
+
+function drawBossHUD(){
+
+    if(!boss){
+        return;
+    }
+
+
+    txt(
+        boss.name,
+        W / 2,
+        60,
+        boss.final ? 10 : 8,
+        boss.final ? "#ff315d" : boss.accent,
+        "center"
+    );
+
+
+    const barX = 130;
+    const barY = 70;
+    const barW = 380;
+    const barH = 7;
+
+
+    px(
+        barX,
+        barY,
+        barW,
+        barH,
+        "#241437"
+    );
+
+
+    px(
+        barX,
+        barY,
+        barW * Math.max(
+            0,
+            boss.hp / boss.maxHp
+        ),
+        barH,
+        boss.final
+            ? "#ff315d"
+            : boss.accent
+    );
+
+}
+
+
+/* =========================================================
    NORMAL GAME UPDATE
    ========================================================= */
 
@@ -2121,6 +2792,19 @@ function updateGame(){
         Math.floor(
             score / 600
         ) + 1;
+
+
+    /* BOSS CHECK */
+
+    if(
+        !boss &&
+        level >= nextBossLevel &&
+        isBossLevel(nextBossLevel)
+    ){
+
+        startBoss(nextBossLevel);
+
+    }
 
 
     /* PLAYER */
@@ -2221,22 +2905,26 @@ function updateGame(){
 
     /* ENEMY SPAWN */
 
-    enemyTimer--;
+    if(!boss){
+
+        enemyTimer--;
 
 
-    if(
-        enemyTimer <= 0
-    ){
+        if(
+            enemyTimer <= 0
+        ){
 
-        spawnEnemy();
+            spawnEnemy();
 
 
-        enemyTimer =
-            Math.max(
-                16,
-                48 -
-                level * 2.2
-            );
+            enemyTimer =
+                Math.max(
+                    16,
+                    48 -
+                    level * 2.2
+                );
+
+        }
 
     }
 
@@ -2460,6 +3148,61 @@ function updateObjects(){
                 bullet.x > -50 &&
                 bullet.x < W + 50
         );
+
+
+    /* BOSS */
+
+    if(boss){
+
+        updateBoss();
+
+
+        for(
+            let j = bullets.length - 1;
+            j >= 0;
+            j--
+        ){
+
+            const bullet =
+                bullets[j];
+
+
+            if(
+                hit(
+                    boss,
+                    bullet
+                )
+            ){
+
+                damageBoss(
+                    bullet.damage || 1
+                );
+
+                bullets.splice(
+                    j,
+                    1
+                );
+
+
+                beep(
+                    boss
+                        ? 360
+                        : 500,
+                    .025,
+                    "square",
+                    .012
+                );
+
+
+                if(!boss){
+                    break;
+                }
+
+            }
+
+        }
+
+    }
 
 
 
@@ -2911,6 +3654,14 @@ function startAttractMode(){
         [];
 
 
+    boss =
+        null;
+
+
+    bossBullets =
+        [];
+
+
     player.x =
         W / 2;
 
@@ -2972,6 +3723,14 @@ function exitAttractMode(){
 
 
     particles =
+        [];
+
+
+    boss =
+        null;
+
+
+    bossBullets =
         [];
 
 
@@ -3756,6 +4515,13 @@ function gameOver(){
 
 
     resetWeapon();
+
+
+    boss =
+        null;
+
+    bossBullets =
+        [];
 
 
     beep(
@@ -6282,9 +7048,15 @@ function draw(){
 
         drawHUD();
 
+        drawBossHUD();
+
         drawBullets();
 
+        drawBossBullets();
+
         drawEnemies();
+
+        drawBoss();
 
         drawPowerUps();
 
