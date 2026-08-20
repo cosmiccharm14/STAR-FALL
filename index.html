@@ -2917,185 +2917,326 @@ function defeatBoss(){
 }
 
 
+function drawBossBackground(){
+
+    ctx.fillStyle = "#07040d";
+    ctx.fillRect(0,0,W,H);
+
+    for(const star of stars){
+
+        const twinkle =
+            Math.floor(
+                145 +
+                Math.sin(frame * .045 + star.x * .07) * 55
+            );
+
+        px(
+            star.x,
+            star.y,
+            star.size,
+            star.size,
+            `rgb(${twinkle},${twinkle},${Math.min(255,twinkle + 35)})`
+        );
+
+    }
+
+}
+
 function drawBoss(){
 
     if(!boss){
         return;
     }
 
+    const x = Math.round(boss.x);
+    const y = Math.round(boss.y);
 
-    const x =
-        Math.round(boss.x);
+    /*
+        IMPORTANT:
+        The bosses are NOT one generic silhouette anymore.
+        Each boss has its own pixel-art construction to match
+        the standalone boss reference.
+    */
 
-    const y =
-        Math.round(boss.y);
-
-
-    /* OUTER BODY */
-
-    px(
-        x - boss.w / 2,
-        y - boss.h / 2,
-        boss.w,
-        boss.h,
-        boss.accent
-    );
-
-
-    px(
-        x - boss.w / 2 + 8,
-        y - boss.h / 2 + 7,
-        boss.w - 16,
-        boss.h - 14,
-        boss.main
-    );
-
-
-    /* WINGS */
-
-    px(
-        x - boss.w / 2 - 16,
-        y - 15,
-        16,
-        30,
-        boss.accent
-    );
-
-
-    px(
-        x + boss.w / 2,
-        y - 15,
-        16,
-        30,
-        boss.accent
-    );
-
-
-    /* CENTER CORE */
-
-    px(
-        x - 18,
-        y - 19,
-        36,
-        38,
-        boss.glow
-    );
-
-
-    px(
-        x - 12,
-        y - 13,
-        24,
-        26,
-        boss.accent
-    );
-
-
-    px(
-        x - 7,
-        y - 8,
-        14,
-        16,
-        boss.final
-            ? "#ff315d"
-            : "#fff04a"
-    );
-
-
-    /* CANNONS */
-
-    px(
-        x - boss.w / 2 + 14,
-        y + 17,
-        14,
-        12,
-        boss.accent
-    );
-
-
-    px(
-        x + boss.w / 2 - 28,
-        y + 17,
-        14,
-        12,
-        boss.accent
-    );
-
-
-    /* UNIQUE BOSS FEATURES */
-
-    if(boss.pattern === "burst"){
-
-        px(x - 7, y - 25, 14, 7, "#ff315d");
-        px(x - 3, y - 31, 6, 6, "#fff04a");
-
+    if(boss.level === 20){
+        drawCrimsonDreadnought(x,y);
+        return;
     }
 
-    if(boss.pattern === "orbital"){
-
-        px(x - 28, y - 4, 8, 8, "#54f5ff");
-        px(x + 20, y - 4, 8, 8, "#54f5ff");
-        px(x - 31, y + 14, 6, 6, "#a84cff");
-        px(x + 25, y + 14, 6, 6, "#a84cff");
-
+    if(boss.level === 40){
+        drawOrbitalHydra(x,y);
+        return;
     }
 
-    if(boss.pattern === "cannon"){
-
-        px(x - 28, y + 5, 9, 18, "#ff7a35");
-        px(x + 19, y + 5, 9, 18, "#ff7a35");
-        px(x - 4, y - 27, 8, 7, "#fff04a");
-
+    if(boss.level === 60){
+        drawSolarTitan(x,y);
+        return;
     }
 
-    if(boss.pattern === "crossfire"){
-
-        px(x - 32, y - 2, 8, 16, "#9b5cff");
-        px(x + 24, y - 2, 8, 16, "#9b5cff");
-        px(x - 5, y + 12, 10, 9, "#ff315d");
-
+    if(boss.level === 80){
+        drawVoidCitadel(x,y);
+        return;
     }
 
-    if(boss.pattern === "void"){
-
-        px(x - 37, y - 4, 7, 22, "#140d1f");
-        px(x + 30, y - 4, 7, 22, "#140d1f");
-        px(x - 3, y - 31, 6, 8, "#ff315d");
-        px(x - 1, y + 16, 2, 7, "#a84cff");
-
-    }
+    drawBlackStar(x,y);
+}
 
 
-    /* FINAL BOSS CROWN */
+/* =========================================================
+   LEVEL 20 — CRIMSON DREADNOUGHT
+   ========================================================= */
 
-    if(boss.final){
+function drawCrimsonDreadnought(x,y){
 
-        px(
-            x - 20,
-            y - boss.h / 2 - 9,
-            40,
-            7,
-            "#ff315d"
-        );
+    /* dark silhouette */
 
-        px(
-            x - 12,
-            y - boss.h / 2 - 16,
-            8,
-            9,
-            "#a84cff"
-        );
+    px(x-58,y-28,116,7,"#24172f");
+    px(x-69,y-17,138,34,"#4a2049");
+    px(x-58,y+17,116,10,"#24172f");
 
-        px(
-            x + 4,
-            y - boss.h / 2 - 16,
-            8,
-            9,
-            "#a84cff"
-        );
+    /* wings */
 
-    }
+    px(x-74,y-5,16,11,"#6a2b69");
+    px(x+58,y-5,16,11,"#6a2b69");
 
+    px(x-80,y+8,13,7,"#9b5cff");
+    px(x+67,y+8,13,7,"#9b5cff");
+
+    /* top armor */
+
+    px(x-34,y-30,68,8,"#ff315d");
+
+    /* main body */
+
+    px(x-49,y-16,98,39,"#ff315d");
+    px(x-41,y-10,82,29,"#ff315d");
+
+    /* inner dark chamber */
+
+    px(x-26,y-12,52,30,"#6b1e45");
+
+    /* reactor housing */
+
+    px(x-18,y-8,36,25,"#fff04a");
+    px(x-12,y-4,24,17,"#54f5ff");
+    px(x-7,y,14,10,"#ff315d");
+
+    /* white status lights */
+
+    px(x-42,y-1,6,5,"#ffffff");
+    px(x+36,y-1,6,5,"#ffffff");
+
+    /* lower thrusters */
+
+    px(x-30,y+21,18,6,"#6d3a73");
+    px(x+12,y+21,18,6,"#6d3a73");
+
+    /* crown / antenna */
+
+    px(x-4,y-39,8,8,"#ff315d");
+    px(x-2,y-45,4,6,"#fff04a");
+}
+
+
+/* =========================================================
+   LEVEL 40 — ORBITAL HYDRA
+   ========================================================= */
+
+function drawOrbitalHydra(x,y){
+
+    /* dark outer frame */
+
+    px(x-54,y-28,108,7,"#112e3c");
+    px(x-66,y-20,132,42,"#103341");
+    px(x-54,y+22,108,8,"#0d202d");
+
+    /* cyan top armor */
+
+    px(x-38,y-29,76,8,"#54f5ff");
+    px(x-48,y-21,96,6,"#277f94");
+
+    /* side fins */
+
+    px(x-69,y-5,14,16,"#277f94");
+    px(x+55,y-5,14,16,"#277f94");
+
+    px(x-61,y+3,8,7,"#54f5ff");
+    px(x+53,y+3,8,7,"#54f5ff");
+
+    /* central housing */
+
+    px(x-35,y-15,70,31,"#24687b");
+    px(x-25,y-8,50,22,"#0b1720");
+
+    /* reactor */
+
+    px(x-14,y-10,28,24,"#54f5ff");
+    px(x-8,y-4,16,13,"#ffffff");
+    px(x-4,y,8,8,"#a84cff");
+
+    /* hydra eye nodes */
+
+    px(x-47,y-3,8,6,"#ffffff");
+    px(x+39,y-3,8,6,"#ffffff");
+
+    px(x-33,y+10,7,5,"#54f5ff");
+    px(x+26,y+10,7,5,"#54f5ff");
+
+    /* lower pods */
+
+    px(x-27,y+17,17,6,"#1c4654");
+    px(x+10,y+17,17,6,"#1c4654");
+
+    /* antenna */
+
+    px(x-3,y-37,6,8,"#54f5ff");
+    px(x-1,y-43,2,6,"#ffffff");
+}
+
+
+/* =========================================================
+   LEVEL 60 — SOLAR TITAN
+   ========================================================= */
+
+function drawSolarTitan(x,y){
+
+    /* dark heat frame */
+
+    px(x-60,y-30,120,8,"#542919");
+    px(x-67,y-21,134,46,"#4a2518");
+    px(x-57,y+25,114,8,"#2f1a17");
+
+    /* top solar plate */
+
+    px(x-38,y-31,76,10,"#ff9f32");
+    px(x-30,y-22,60,7,"#ff7a35");
+
+    /* main body */
+
+    px(x-47,y-15,94,37,"#d95d1b");
+    px(x-35,y-9,70,29,"#ff7a35");
+
+    /* side cannon blocks */
+
+    px(x-64,y+1,15,15,"#ff315d");
+    px(x+49,y+1,15,15,"#ff315d");
+
+    /* reactor */
+
+    px(x-20,y-10,40,27,"#ffb52e");
+    px(x-11,y-4,22,17,"#fff04a");
+    px(x-6,y,12,8,"#ffffff");
+
+    /* vents */
+
+    px(x-34,y+17,15,5,"#71331f");
+    px(x+19,y+17,15,5,"#71331f");
+
+    /* solar crown */
+
+    px(x-4,y-40,8,8,"#fff04a");
+    px(x-2,y-46,4,6,"#ff7a35");
+}
+
+
+/* =========================================================
+   LEVEL 80 — VOID CITADEL
+   ========================================================= */
+
+function drawVoidCitadel(x,y){
+
+    /* huge dark fortress silhouette */
+
+    px(x-60,y-31,120,8,"#2c183f");
+    px(x-69,y-22,138,48,"#24162f");
+    px(x-56,y+26,112,10,"#140d1f");
+
+    /* purple upper plate */
+
+    px(x-41,y-33,82,10,"#6f3ca0");
+    px(x-31,y-24,62,7,"#9b5cff");
+
+    /* main chamber */
+
+    px(x-48,y-15,96,38,"#9b5cff");
+    px(x-35,y-8,70,27,"#24162f");
+
+    /* cyan void core */
+
+    px(x-17,y-9,34,24,"#54f5ff");
+    px(x-10,y-3,20,13,"#1a6676");
+    px(x-4,y,8,8,"#ffffff");
+
+    /* red side modules */
+
+    px(x-67,y+8,16,15,"#ff315d");
+    px(x+51,y+8,16,15,"#ff315d");
+
+    /* purple side pylons */
+
+    px(x-55,y-3,10,18,"#6f3ca0");
+    px(x+45,y-3,10,18,"#6f3ca0");
+
+    /* lower braces */
+
+    px(x-31,y+19,18,7,"#4d2a69");
+    px(x+13,y+19,18,7,"#4d2a69");
+
+    /* top void spike */
+
+    px(x-4,y-43,8,10,"#a84cff");
+    px(x-2,y-50,4,7,"#ff315d");
+}
+
+
+/* =========================================================
+   LEVEL 100 — THE BLACK STAR
+   ========================================================= */
+
+function drawBlackStar(x,y){
+
+    /* deepest silhouette */
+
+    px(x-70,y-34,140,9,"#160d1f");
+    px(x-82,y-24,164,54,"#120b18");
+    px(x-68,y+30,136,10,"#07040d");
+
+    /* magenta fortress plate */
+
+    px(x-53,y-21,106,43,"#791d53");
+    px(x-43,y-15,86,33,"#9d245d");
+
+    /* dark central chamber */
+
+    px(x-31,y-12,62,29,"#321226");
+
+    /* final reactor */
+
+    px(x-19,y-10,38,26,"#fff04a");
+    px(x-11,y-4,22,17,"#ffffff");
+    px(x-5,y,10,9,"#ff315d");
+
+    /* purple side wings */
+
+    px(x-83,y-1,16,18,"#a84cff");
+    px(x+67,y-1,16,18,"#a84cff");
+
+    /* crimson wing tips */
+
+    px(x-91,y+7,9,9,"#ff315d");
+    px(x+82,y+7,9,9,"#ff315d");
+
+    /* black-star lower blocks */
+
+    px(x-39,y+21,24,8,"#1a0b1d");
+    px(x+15,y+21,24,8,"#1a0b1d");
+
+    /* final crown */
+
+    px(x-24,y-43,48,7,"#ff315d");
+    px(x-14,y-50,8,9,"#a84cff");
+    px(x+6,y-50,8,9,"#a84cff");
+    px(x-4,y-56,8,7,"#ff315d");
 }
 
 
@@ -3160,43 +3301,35 @@ function drawBossHUD(){
         return;
     }
 
+    txt(
+        `LV ${String(boss.level).padStart(3,"0")}`,
+        12,
+        25,
+        6,
+        "#b78cff"
+    );
 
     txt(
         boss.name,
         W / 2,
-        60,
-        boss.final ? 10 : 8,
+        25,
+        boss.final ? 8 : 7,
         boss.final ? "#ff315d" : boss.accent,
         "center"
     );
 
+    const barX = 82;
+    const barY = 39;
+    const barW = 476;
+    const barH = 4;
 
-    const barX = 130;
-    const barY = 70;
-    const barW = 380;
-    const barH = 7;
-
-
+    px(barX, barY, barW, barH, "#241437");
     px(
         barX,
         barY,
-        barW,
+        barW * Math.max(0, boss.hp / boss.maxHp),
         barH,
-        "#241437"
-    );
-
-
-    px(
-        barX,
-        barY,
-        barW * Math.max(
-            0,
-            boss.hp / boss.maxHp
-        ),
-        barH,
-        boss.final
-            ? "#ff315d"
-            : boss.accent
+        boss.final ? "#ff315d" : boss.accent
     );
 
 }
@@ -7501,11 +7634,18 @@ function draw(){
         state === "playing"
     ){
 
-        drawBackground();
+        if(boss || bossIntroTimer > 0){
+
+            drawBossBackground();
+
+        }
+        else{
+
+            drawBackground();
+
+        }
 
         drawHUD();
-
-        drawBossHUD();
 
         drawBullets();
 
@@ -7526,91 +7666,38 @@ function draw(){
 
         if(bossIntroTimer > 0){
 
-            const warningBlink =
-                Math.floor(frame / 4) % 2 === 0;
+            const flash =
+                Math.floor(frame / 3) % 2 === 0;
 
-            const hardBlink =
+            const hardFlash =
                 Math.floor(frame / 2) % 2 === 0;
 
-            /* FULL-SCREEN ARCADE WARNING */
+            px(0, 0, W, H, flash ? "rgba(20,2,8,.96)" : "rgba(3,2,7,.98)");
 
-            px(
-                0,
-                0,
-                W,
-                H,
-                warningBlink
-                ? "rgba(75,0,18,.84)"
-                : "rgba(0,0,0,.90)"
-            );
+            /* diagonal hazard tape at the top */
+            ctx.save();
+            ctx.beginPath();
 
-            /* HAZARD STRIPES */
-
-            for(
-                let stripeY = 45;
-                stripeY < H - 35;
-                stripeY += 34
-            ){
-
-                px(
-                    0,
-                    stripeY,
-                    W,
-                    7,
-                    hardBlink
-                    ? "#ff315d"
-                    : "#64102d"
-                );
-
+            for(let x = -30; x < W + 40; x += 34){
+                ctx.moveTo(x, 62);
+                ctx.lineTo(x + 14, 58);
+                ctx.lineTo(x + 30, 99);
+                ctx.lineTo(x + 16, 103);
+                ctx.closePath();
             }
 
-            /* CENTRAL WARNING BOX */
+            ctx.fillStyle = hardFlash ? "#ff315d" : "#b51e45";
+            ctx.fill();
+            ctx.restore();
 
-            px(
-                55,
-                112,
-                530,
-                200,
-                "#07030a"
-            );
+            px(54, 106, 532, 4, "#ff315d");
+            px(54, 264, 532, 4, "#ff315d");
 
-            px(
-                55,
-                112,
-                530,
-                6,
-                "#ff315d"
-            );
+            px(96, 116, 448, 136, "#08050d");
 
-            px(
-                55,
-                306,
-                530,
-                6,
-                "#ff315d"
-            );
+            txt("!! ALERT !!", W/2, 137, 7, hardFlash ? "#fff04a" : "#ff315d", "center");
 
-            txt(
-                "!! ALERT !!",
-                W / 2,
-                140,
-                7,
-                hardBlink
-                ? "#fff04a"
-                : "#ff315d",
-                "center"
-            );
-
-            txt(
-                "BOSS INCOMING",
-                W / 2,
-                174,
-                18,
-                warningBlink
-                ? "#ff315d"
-                : "#ffffff",
-                "center"
-            );
+            txt("BOSS INCOMING", W/2, 173, 17, flash ? "#ffffff" : "#ff315d", "center");
 
             const incomingBossNames = {
                 20: "CRIMSON DREADNOUGHT",
@@ -7622,64 +7709,36 @@ function draw(){
 
             txt(
                 incomingBossNames[bossIntroLevel] || "UNKNOWN HOSTILE",
-                W / 2,
-                207,
-                bossIntroLevel === 100 ? 10 : 7,
-                "#ffffff",
+                W/2,
+                195,
+                bossIntroLevel === 100 ? 9 : 6,
+                "#ff315d",
                 "center"
             );
 
             txt(
                 `LEVEL ${String(bossIntroLevel).padStart(3,"0")}`,
-                W / 2,
-                233,
-                7,
-                "#54f5ff",
-                "center"
-            );
-
-            txt(
-                bossIntroLevel === 100
-                ? "SURVIVAL PROBABILITY: UNKNOWN"
-                : "PREPARE FOR ENGAGEMENT",
-                W / 2,
-                255,
-                5,
+                W/2,
+                217,
+                6,
                 "#b78cff",
                 "center"
             );
 
             const introProgress =
-                1 -
-                bossIntroTimer /
-                150;
+                Math.min(1, Math.max(0, 1 - bossIntroTimer / 150));
 
-            px(
-                135,
-                274,
-                370,
-                8,
-                "#241437"
-            );
-
-            px(
-                135,
-                274,
-                370 * introProgress,
-                8,
-                hardBlink
-                ? "#ff315d"
-                : "#fff04a"
-            );
+            px(110, 248, 420, 5, "#241437");
+            px(110, 248, 420 * introProgress, 5, hardFlash ? "#ff315d" : "#fff04a");
 
             txt(
                 bossIntroTimer <= 1
-                ? "ENGAGING..."
-                : `T-MINUS ${Math.ceil(bossIntroTimer / 30)}`,
-                W / 2,
-                292,
+                    ? "ENGAGING..."
+                    : `T-MINUS ${Math.ceil(bossIntroTimer / 30)}`,
+                W/2,
+                239,
                 6,
-                "#ffffff",
+                "#fff04a",
                 "center"
             );
 
