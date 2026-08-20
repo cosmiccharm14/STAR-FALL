@@ -403,6 +403,8 @@ let stars = [];
 let boss = null;
 let bossBullets = [];
 let nextBossLevel = 20;
+let bossIntroTimer = 0;
+let bossIntroLevel = 0;
 
 const BOSS_LEVELS = [20, 40, 60, 80, 100];
 
@@ -1249,6 +1251,13 @@ function startGame(){
 
     nextBossLevel =
         20;
+
+
+    bossIntroTimer =
+        0;
+
+    bossIntroLevel =
+        0;
 
 
     attractTimer =
@@ -2148,6 +2157,100 @@ function updateStars(){
    BOSS SYSTEM
    ========================================================= */
 
+function startBossIntro(levelNumber){
+
+    if(
+        boss ||
+        bossIntroTimer > 0 ||
+        !isBossLevel(levelNumber)
+    ){
+
+        return;
+
+    }
+
+
+    bossIntroLevel =
+        levelNumber;
+
+    bossIntroTimer =
+        150;
+
+    enemies = [];
+    powerUps = [];
+    bullets = [];
+    bossBullets = [];
+
+    shake = 30;
+
+    beep(
+        95,
+        .18,
+        "sawtooth",
+        .04
+    );
+
+}
+
+
+function updateBossIntro(){
+
+    if(bossIntroTimer <= 0){
+        return false;
+    }
+
+
+    bossIntroTimer--;
+
+
+    /* HEAVY, PULSING CABINET SHAKE */
+
+    const warningPulse =
+        Math.sin(frame * .95) * .5 + .5;
+
+    const countdownShake =
+        bossIntroTimer < 55
+        ? 20 + warningPulse * 16
+        : 12 + warningPulse * 12;
+
+    shake =
+        Math.max(
+            shake,
+            Math.round(countdownShake)
+        );
+
+
+    if(
+        bossIntroTimer === 120 ||
+        bossIntroTimer === 90 ||
+        bossIntroTimer === 60 ||
+        bossIntroTimer === 30 ||
+        bossIntroTimer === 1
+    ){
+
+        beep(
+            bossIntroTimer === 1 ? 180 : 120,
+            .12,
+            "square",
+            .045
+        );
+
+    }
+
+
+    if(bossIntroTimer <= 0){
+
+        startBoss(
+            bossIntroLevel
+        );
+
+    }
+
+    return true;
+
+}
+
+
 function startBoss(levelNumber){
 
     if(
@@ -2201,47 +2304,66 @@ function startBoss(levelNumber){
         colors[bossIndex];
 
 
+    const bossNames = {
+        20: "CRIMSON DREADNOUGHT",
+        40: "ORBITAL HYDRA",
+        60: "SOLAR TITAN",
+        80: "VOID CITADEL",
+        100: "THE BLACK STAR"
+    };
+
+
+    const bossPatterns = {
+        20: "burst",
+        40: "orbital",
+        60: "cannon",
+        80: "crossfire",
+        100: "void"
+    };
+
+
+    const maxHp =
+        280 + bossIndex * 140 +
+        (finalBoss ? 450 : 0);
+
+
     boss = {
 
         level:levelNumber,
 
         final:finalBoss,
 
-        name:finalBoss
-            ? "FINAL BOSS"
-            : `BOSS // ${String(levelNumber).padStart(2,"0")}`,
+        name:bossNames[levelNumber],
+
+        pattern:bossPatterns[levelNumber],
 
         x:W / 2,
 
         y:105,
 
-        w:finalBoss ? 132 : 112,
+        w:finalBoss ? 144 : 116,
 
-        h:finalBoss ? 72 : 62,
+        h:finalBoss ? 78 : 64,
 
-        maxHp:
-            280 + bossIndex * 140,
+        maxHp:maxHp,
 
-        hp:
-            280 + bossIndex * 140,
+        hp:maxHp,
 
         vx:
-            finalBoss ? 1.35 : 1.05 + bossIndex * .08,
+            finalBoss ? 1.45 : 1.05 + bossIndex * .1,
 
-        shotTimer:
-            75,
+        shotTimer:60,
+
+        attackTimer:0,
 
         phase:
             Math.random() * Math.PI * 2,
 
-        main:
-            palette.main,
+        main:palette.main,
 
-        accent:
-            palette.accent,
+        accent:palette.accent,
 
-        glow:
-            palette.glow
+        glow:palette.glow
 
     };
 
@@ -2311,73 +2433,93 @@ function updateBoss(){
         ) * 12;
 
 
+    if(boss.attackTimer > 0){
+        boss.attackTimer--;
+    }
+
+
     boss.shotTimer--;
 
 
-    if(
-        boss.shotTimer <= 0
-    ){
+    if(boss.shotTimer <= 0){
 
-        fireBossBurst();
+        fireBossAttack();
+
+        if(
+            boss.hp < boss.maxHp * .5 &&
+            boss.attackTimer <= 0
+        ){
+            boss.attackTimer = 120;
+            fireBossAttack();
+        }
+
+        const difficulty =
+            BOSS_LEVELS.indexOf(boss.level);
 
         boss.shotTimer =
-            boss.final
-            ? 42
-            : Math.max(
-                48,
-                68 -
-                BOSS_LEVELS.indexOf(boss.level) * 4
+            Math.max(28,
+                70 -
+                difficulty * 7 -
+                (boss.final ? 8 : 0)
             );
 
     }
 
 
-    for(
-        const shot of bossBullets
-    ){
+    for(const shot of bossBullets){
 
-        shot.y +=
-            shot.speed;
-
-        shot.x +=
-            shot.vx;
+        if(shot.type === "orb"){
+            shot.x += shot.vx;
+            shot.y += shot.vy;
+            shot.spin += .05;
+        }
+        else if(shot.type === "ring"){
+            shot.x += shot.vx;
+            shot.y += shot.vy;
+            shot.rotation += shot.rotationSpeed;
+        }
+        else if(shot.type === "beam"){
+            shot.y += shot.speed;
+        }
+        else if(shot.type === "sweep"){
+            shot.x += shot.vx;
+            shot.y += shot.speed;
+        }
+        else if(shot.type === "missile"){
+            shot.x += shot.vx;
+            shot.y += shot.speed;
+            shot.vx *= .99;
+        }
+        else {
+            shot.y += shot.speed;
+            shot.x += shot.vx;
+        }
 
     }
 
 
     bossBullets =
-        bossBullets.filter(
-            shot =>
-                shot.y < H + 30 &&
-                shot.x > -30 &&
-                shot.x < W + 30
+        bossBullets.filter(shot =>
+            shot.y < H + 80 &&
+            shot.x > -80 &&
+            shot.x < W + 80 &&
+            shot.life !== 0
         );
 
 
-    if(
-        player.invincible <= 0
-    ){
+    if(player.invincible <= 0){
 
-        for(
-            let i = bossBullets.length - 1;
-            i >= 0;
-            i--
-        ){
+        for(let i = bossBullets.length - 1; i >= 0; i--){
 
-            if(
-                hit(
-                    player,
-                    bossBullets[i]
-                )
-            ){
+            const shot = bossBullets[i];
 
-                bossBullets.splice(i,1);
+            if(hit(player, shot)){
+
+                bossBullets.splice(i, 1);
 
                 damagePlayer();
 
-                if(state !== "playing"){
-                    return;
-                }
+                if(state !== "playing") return;
 
                 break;
 
@@ -2390,7 +2532,8 @@ function updateBoss(){
 
     if(
         player.invincible <= 0 &&
-        hit(player,boss)
+        boss &&
+        hit(player, boss)
     ){
 
         damagePlayer();
@@ -2400,61 +2543,268 @@ function updateBoss(){
 }
 
 
-function fireBossBurst(){
+function fireBossAttack(){
 
-    if(!boss){
-        return;
+    if(!boss) return;
+
+
+    switch(boss.pattern){
+
+        case "burst":
+            fireCrimsonBurst();
+            break;
+
+        case "orbital":
+            fireOrbitalRing();
+            break;
+
+        case "cannon":
+            fireSolarCannon();
+            break;
+
+        case "crossfire":
+            fireCrossfire();
+            break;
+
+        case "void":
+            fireVoidAttack();
+            break;
+
     }
 
-
-    const count =
-        boss.final ? 5 : 3;
+}
 
 
-    const spread =
-        boss.final ? .8 : .55;
+function fireCrimsonBurst(){
 
+    const dx = player.x - boss.x;
+    const dy = player.y - boss.y;
+    const base = Math.atan2(dy, dx);
 
-    for(
-        let i = 0;
-        i < count;
-        i++
-    ){
+    const count = 5;
+    const spread = .72;
 
-        const offset =
-            count === 1
-            ? 0
-            : (
-                i -
-                (count - 1) / 2
-            ) * spread;
-
+    for(let i = 0; i < count; i++){
+        const angle =
+            base +
+            (i - (count - 1) / 2) *
+            (spread / (count - 1));
 
         bossBullets.push({
-
-            x:boss.x + offset * 18,
-
+            type:"orb",
+            x:boss.x,
             y:boss.y + boss.h / 2,
+            w:12,
+            h:12,
+            vx:Math.cos(angle) * 1.7,
+            vy:Math.sin(angle) * 1.7,
+            speed:0,
+            spin:0,
+            color:"#ff315d"
+        });
+    }
 
-            w:8,
+    beep(180, .06, "square", .02);
+}
 
+
+function fireOrbitalRing(){
+
+    /* LEVEL 40: circles of energy travelling toward you. */
+
+    const count = 10;
+    const phase = frame * .03;
+
+    for(let i = 0; i < count; i++){
+
+        const angle =
+            phase +
+            (Math.PI * 2 * i / count);
+
+        bossBullets.push({
+            type:"ring",
+            x:boss.x,
+            y:boss.y + 18,
+            w:14,
             h:14,
-
-            speed:3.4 + (boss.level / 100) * 1.3,
-
-            vx:offset * .55
-
+            vx:Math.cos(angle) * .75,
+            vy:Math.sin(angle) * .75 + 1.35,
+            speed:0,
+            rotation:angle,
+            rotationSpeed:i % 2 ? .08 : -.08,
+            color:"#54f5ff"
         });
 
     }
 
+    /* Center orb aimed toward the player. */
 
-    beep(
-        boss.final ? 170 : 220,
-        .05,
-        "square",
-        .018
-    );
+    const dx = player.x - boss.x;
+    const dy = player.y - boss.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    bossBullets.push({
+        type:"orb",
+        x:boss.x,
+        y:boss.y + 15,
+        w:16,
+        h:16,
+        vx:dx / len * 2.25,
+        vy:dy / len * 2.25,
+        speed:0,
+        spin:0,
+        color:"#a84cff"
+    });
+
+    beep(330, .08, "sine", .02);
+}
+
+
+function fireSolarCannon(){
+
+    /* LEVEL 60: rotating cannon + lane beams. */
+
+    const lane =
+        90 +
+        Math.abs(
+            Math.sin(frame * .018)
+        ) * 460;
+
+    bossBullets.push({
+        type:"beam",
+        x:lane,
+        y:boss.y + 30,
+        w:18,
+        h:46,
+        speed:2.7,
+        life:150,
+        color:"#ff7a35"
+    });
+
+    const aimedX = player.x - boss.x;
+    const aimedY = player.y - boss.y;
+    const len = Math.hypot(aimedX, aimedY) || 1;
+
+    bossBullets.push({
+        type:"orb",
+        x:boss.x,
+        y:boss.y + 25,
+        w:18,
+        h:18,
+        vx:aimedX / len * 2.5,
+        vy:aimedY / len * 2.5,
+        speed:0,
+        spin:0,
+        color:"#fff04a"
+    });
+
+    if(Math.floor(frame / 120) % 2 === 0){
+        bossBullets.push({
+            type:"beam",
+            x:boss.x - 34,
+            y:boss.y + 24,
+            w:12,
+            h:42,
+            speed:3.1,
+            life:140,
+            color:"#ff315d"
+        });
+    }
+
+    beep(140, .12, "sawtooth", .025);
+}
+
+
+function fireCrossfire(){
+
+    /* LEVEL 80: opposing streams + homing-ish missiles. */
+
+    for(let side = -1; side <= 1; side += 2){
+
+        bossBullets.push({
+            type:"sweep",
+            x:boss.x + side * 30,
+            y:boss.y + 25,
+            w:10,
+            h:20,
+            vx:side * 1.5,
+            speed:2.8,
+            life:180,
+            color:"#9b5cff"
+        });
+
+    }
+
+    for(let i = 0; i < 2; i++){
+
+        const dx = player.x - boss.x + (i ? 35 : -35);
+        const dy = player.y - boss.y;
+        const len = Math.hypot(dx, dy) || 1;
+
+        bossBullets.push({
+            type:"missile",
+            x:boss.x + (i ? 25 : -25),
+            y:boss.y + 25,
+            w:12,
+            h:20,
+            vx:dx / len * 1.1,
+            speed:2.0 + i * .2,
+            color:"#a84cff"
+        });
+
+    }
+
+    beep(210, .07, "square", .022);
+}
+
+
+function fireVoidAttack(){
+
+    /* LEVEL 100: mixed radial + spiral + aimed attacks. */
+
+    const count = 12;
+    const spin = frame * .08;
+
+    for(let i = 0; i < count; i++){
+
+        const angle =
+            spin +
+            Math.PI * 2 * i / count;
+
+        bossBullets.push({
+            type:"ring",
+            x:boss.x,
+            y:boss.y + 10,
+            w:16,
+            h:16,
+            vx:Math.cos(angle) * 1.15,
+            vy:Math.sin(angle) * 1.15 + .95,
+            speed:0,
+            rotation:angle,
+            rotationSpeed:.12,
+            color:i % 2 ? "#ff315d" : "#a84cff"
+        });
+
+    }
+
+    const dx = player.x - boss.x;
+    const dy = player.y - boss.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    bossBullets.push({
+        type:"orb",
+        x:boss.x,
+        y:boss.y + 26,
+        w:20,
+        h:20,
+        vx:dx / len * 2.9,
+        vy:dy / len * 2.9,
+        speed:0,
+        spin:0,
+        color:"#ffffff"
+    });
+
+    beep(100, .16, "sawtooth", .03);
 
 }
 
@@ -2672,6 +3022,50 @@ function drawBoss(){
     );
 
 
+    /* UNIQUE BOSS FEATURES */
+
+    if(boss.pattern === "burst"){
+
+        px(x - 7, y - 25, 14, 7, "#ff315d");
+        px(x - 3, y - 31, 6, 6, "#fff04a");
+
+    }
+
+    if(boss.pattern === "orbital"){
+
+        px(x - 28, y - 4, 8, 8, "#54f5ff");
+        px(x + 20, y - 4, 8, 8, "#54f5ff");
+        px(x - 31, y + 14, 6, 6, "#a84cff");
+        px(x + 25, y + 14, 6, 6, "#a84cff");
+
+    }
+
+    if(boss.pattern === "cannon"){
+
+        px(x - 28, y + 5, 9, 18, "#ff7a35");
+        px(x + 19, y + 5, 9, 18, "#ff7a35");
+        px(x - 4, y - 27, 8, 7, "#fff04a");
+
+    }
+
+    if(boss.pattern === "crossfire"){
+
+        px(x - 32, y - 2, 8, 16, "#9b5cff");
+        px(x + 24, y - 2, 8, 16, "#9b5cff");
+        px(x - 5, y + 12, 10, 9, "#ff315d");
+
+    }
+
+    if(boss.pattern === "void"){
+
+        px(x - 37, y - 4, 7, 22, "#140d1f");
+        px(x + 30, y - 4, 7, 22, "#140d1f");
+        px(x - 3, y - 31, 6, 8, "#ff315d");
+        px(x - 1, y + 16, 2, 7, "#a84cff");
+
+    }
+
+
     /* FINAL BOSS CROWN */
 
     if(boss.final){
@@ -2707,27 +3101,53 @@ function drawBoss(){
 
 function drawBossBullets(){
 
-    for(
-        const shot of bossBullets
-    ){
+    for(const shot of bossBullets){
 
-        px(
-            shot.x - 4,
-            shot.y - 7,
-            8,
-            14,
-            boss && boss.final
-                ? "#ff315d"
-                : "#a84cff"
-        );
+        const color =
+            shot.color ||
+            (boss && boss.final ? "#ff315d" : "#a84cff");
 
-        px(
-            shot.x - 1,
-            shot.y - 10,
-            2,
-            4,
-            "#ffffff"
-        );
+
+        if(shot.type === "orb" ){
+
+            px(shot.x - shot.w / 2, shot.y - shot.h / 2, shot.w, shot.h, color);
+            px(shot.x - 3, shot.y - 3, 6, 6, "#ffffff");
+            px(shot.x - 9, shot.y - 1, 3, 3, color);
+            px(shot.x + 6, shot.y - 1, 3, 3, color);
+
+        }
+        else if(shot.type === "ring"){
+
+            /* Pixelated circle / ring projectile. */
+
+            px(shot.x - 7, shot.y - 5, 14, 3, color);
+            px(shot.x - 10, shot.y - 2, 3, 8, color);
+            px(shot.x + 7, shot.y - 2, 3, 8, color);
+            px(shot.x - 6, shot.y + 6, 12, 3, color);
+
+            px(shot.x - 3, shot.y - 2, 6, 5, "#07030a");
+            px(shot.x - 1, shot.y - 1, 2, 2, "#ffffff");
+
+        }
+        else if(shot.type === "beam"){
+
+            px(shot.x - shot.w / 2, shot.y, shot.w, shot.h, color);
+            px(shot.x - 2, shot.y - 8, 4, 8, "#ffffff");
+
+        }
+        else if(shot.type === "missile"){
+
+            px(shot.x - 5, shot.y, 10, 18, color);
+            px(shot.x - 3, shot.y - 5, 6, 5, "#fff04a");
+            px(shot.x - 2, shot.y + 18, 4, 7, "#ff315d");
+
+        }
+        else{
+
+            px(shot.x - shot.w / 2, shot.y - shot.h / 2, shot.w, shot.h, color);
+            px(shot.x - 2, shot.y - 7, 4, 4, "#ffffff");
+
+        }
 
     }
 
@@ -2794,7 +3214,18 @@ function updateGame(){
         ) + 1;
 
 
-    /* BOSS CHECK */
+    /* BOSS CHECK / WARNING TRANSITION */
+
+    if(
+        bossIntroTimer > 0
+    ){
+
+        updateBossIntro();
+
+        return;
+
+    }
+
 
     if(
         !boss &&
@@ -2802,7 +3233,9 @@ function updateGame(){
         isBossLevel(nextBossLevel)
     ){
 
-        startBoss(nextBossLevel);
+        startBossIntro(nextBossLevel);
+
+        return;
 
     }
 
@@ -7089,6 +7522,168 @@ function draw(){
         drawParticles();
 
         drawPlayer();
+
+
+        if(bossIntroTimer > 0){
+
+            const warningBlink =
+                Math.floor(frame / 4) % 2 === 0;
+
+            const hardBlink =
+                Math.floor(frame / 2) % 2 === 0;
+
+            /* FULL-SCREEN ARCADE WARNING */
+
+            px(
+                0,
+                0,
+                W,
+                H,
+                warningBlink
+                ? "rgba(75,0,18,.84)"
+                : "rgba(0,0,0,.90)"
+            );
+
+            /* HAZARD STRIPES */
+
+            for(
+                let stripeY = 45;
+                stripeY < H - 35;
+                stripeY += 34
+            ){
+
+                px(
+                    0,
+                    stripeY,
+                    W,
+                    7,
+                    hardBlink
+                    ? "#ff315d"
+                    : "#64102d"
+                );
+
+            }
+
+            /* CENTRAL WARNING BOX */
+
+            px(
+                55,
+                112,
+                530,
+                200,
+                "#07030a"
+            );
+
+            px(
+                55,
+                112,
+                530,
+                6,
+                "#ff315d"
+            );
+
+            px(
+                55,
+                306,
+                530,
+                6,
+                "#ff315d"
+            );
+
+            txt(
+                "!! ALERT !!",
+                W / 2,
+                140,
+                7,
+                hardBlink
+                ? "#fff04a"
+                : "#ff315d",
+                "center"
+            );
+
+            txt(
+                "BOSS INCOMING",
+                W / 2,
+                174,
+                18,
+                warningBlink
+                ? "#ff315d"
+                : "#ffffff",
+                "center"
+            );
+
+            const incomingBossNames = {
+                20: "CRIMSON DREADNOUGHT",
+                40: "ORBITAL HYDRA",
+                60: "SOLAR TITAN",
+                80: "VOID CITADEL",
+                100: "THE BLACK STAR"
+            };
+
+            txt(
+                incomingBossNames[bossIntroLevel] || "UNKNOWN HOSTILE",
+                W / 2,
+                207,
+                bossIntroLevel === 100 ? 10 : 7,
+                "#ffffff",
+                "center"
+            );
+
+            txt(
+                `LEVEL ${String(bossIntroLevel).padStart(3,"0")}`,
+                W / 2,
+                233,
+                7,
+                "#54f5ff",
+                "center"
+            );
+
+            txt(
+                bossIntroLevel === 100
+                ? "SURVIVAL PROBABILITY: UNKNOWN"
+                : "PREPARE FOR ENGAGEMENT",
+                W / 2,
+                255,
+                5,
+                "#b78cff",
+                "center"
+            );
+
+            const introProgress =
+                1 -
+                bossIntroTimer /
+                150;
+
+            px(
+                135,
+                274,
+                370,
+                8,
+                "#241437"
+            );
+
+            px(
+                135,
+                274,
+                370 * introProgress,
+                8,
+                hardBlink
+                ? "#ff315d"
+                : "#fff04a"
+            );
+
+            txt(
+                bossIntroTimer <= 1
+                ? "ENGAGING..."
+                : `T-MINUS ${Math.ceil(bossIntroTimer / 30)}`,
+                W / 2,
+                292,
+                6,
+                "#ffffff",
+                "center"
+            );
+
+        }
 
 
         if(
